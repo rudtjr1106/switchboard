@@ -45,7 +45,8 @@ data class AiState(
 /**
  * 모델 내려받기·올리기와 AI 기능 서비스를 한 곳에서 관리한다
  *
- * 앱은 모델을 자동으로 올리지 않는다. 사용자가 설정에서 켜야 메모리(2~3GB)를 쓴다.
+ * 켜고 끈 상태를 [AppSettings.aiEnabled] 에 기억한다. 켜 둔 채(또는 한 번도 끄지 않은 채) 앱을 닫았고 받아 둔 모델이 있으면
+ * 다음에 켤 때 자동으로 올린다. 사용자가 '끄기' 를 누르면 다음부터 자동으로 올리지 않는다. 내려받기가 끝나면 바로 켠다.
  */
 class AiManager(
     private val store: ModelStore,
@@ -54,6 +55,8 @@ class AiManager(
     private val scope: CoroutineScope,
     private val supported: Boolean,
     private val platformDescription: String,
+    /** 앱을 켤 때 켜 둔 모델을 자동으로 올릴지. 테스트에서 끈다 */
+    private val autoLoad: Boolean = true,
     copywriterFactory: (LlmEngine) -> NoticeCopywriter,
     labelerFactory: (LlmEngine) -> ScreenLabeler,
     codeAdapterFactory: (LlmEngine) -> CodeAdapter,
@@ -85,6 +88,25 @@ class AiManager(
                 }
             }
         }
+        if (autoLoad) scope.launch { loadIfEnabled() }
+    }
+
+    /**
+     * 켜 두기로 했고 받아 둔 모델이 있으면 올린다. 고른 모델이 없으면 받아 둔 다른 모델(권장 모델 우선)을 쓴다
+     *
+     * @return 올리기 시작했으면 true
+     */
+    fun loadIfEnabled(): Boolean {
+        if (!supported || !settings.current.aiEnabled) return false
+        if (engine.state.value is EngineState.Ready || engine.state.value is EngineState.Loading) return false
+        val selected = _state.value.selected
+        val spec = selected.takeIf(store::isInstalled)
+            ?: ModelCatalog.all.sortedByDescending { it.recommended }.firstOrNull(store::isInstalled)
+            ?: return false
+        if (spec != selected) select(spec)
+        logger.info { "켜 둔 AI 모델을 자동으로 올려요: ${spec.id}" }
+        load(spec, remember = false)
+        return true
     }
 
     fun select(spec: ModelSpec) {
@@ -98,7 +120,12 @@ class AiManager(
             store.download(spec).collect { event ->
                 when (event) {
                     is ModelDownloadEvent.Progress -> setStatus(spec, ModelStatus.Downloading(event.fraction, event.downloadedBytes, event.totalBytes))
-                    is ModelDownloadEvent.Done -> setStatus(spec, ModelStatus.Installed)
+                    is ModelDownloadEvent.Done -> {
+                        setStatus(spec, ModelStatus.Installed)
+                        // 받았으면 바로 쓸 수 있게 켠다. 사용자가 끈 적이 있어도 방금 직접 받은 모델이니 켠다
+                        select(spec)
+                        load(spec)
+                    }
                     is ModelDownloadEvent.Failed -> {
                         logger.warn(event.cause) { "모델 다운로드 실패: ${event.message}" }
                         setStatus(spec, ModelStatus.Failed(event.message))
@@ -114,7 +141,9 @@ class AiManager(
         setStatus(spec, if (store.isInstalled(spec)) ModelStatus.Installed else ModelStatus.NotInstalled)
     }
 
-    fun load(spec: ModelSpec = _state.value.selected) {
+    /** @param remember true 면 '켜 둠' 을 기억해 다음 실행에도 자동으로 올린다 */
+    fun load(spec: ModelSpec = _state.value.selected, remember: Boolean = true) {
+        if (remember) settings.update { it.copy(aiEnabled = true) }
         val path = store.installedPath(spec) ?: return
         scope.launch {
             try {
@@ -128,7 +157,9 @@ class AiManager(
         }
     }
 
+    /** 사용자가 끈 것. 다음 실행부터 자동으로 올리지 않는다 */
     fun unload() {
+        settings.update { it.copy(aiEnabled = false) }
         scope.launch {
             val current = (engine.state.value as? EngineState.Ready)?.spec
             engine.unload()

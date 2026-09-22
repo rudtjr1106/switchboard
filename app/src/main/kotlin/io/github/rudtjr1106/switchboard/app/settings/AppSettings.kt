@@ -17,6 +17,7 @@ private val logger = KotlinLogging.logger {}
 data class AppSettings(
     val lastRepository: RepoRef? = null,
     val modelId: String? = null,
+    /** 온디바이스 AI 를 켜 둘지. 받아 둔 모델이 있으면 앱을 켤 때 자동으로 올린다. 사용자가 끄면 false */
     val aiEnabled: Boolean = true,
     val lastProjectPath: String? = null,
     val skippedUpdateTag: String? = null,

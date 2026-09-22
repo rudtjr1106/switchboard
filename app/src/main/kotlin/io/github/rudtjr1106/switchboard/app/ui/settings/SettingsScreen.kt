@@ -88,7 +88,7 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit, initialDialog: A
                     if (!ai.supported) {
                         NoteBanner("이 기기(${ai.platform})에는 미리 빌드된 llama.cpp 가 없어 AI 기능을 쓸 수 없어요.", NoteKind.WARNING)
                     } else {
-                        Caption("문구 다듬기·화면 라벨·코드 적응에 쓰는 모델이에요. 파일은 ${container.aiModelsDir()} 에 저장돼요. 켜면 메모리를 2~3GB 써요.")
+                        Caption("문구 다듬기·화면 라벨·코드 적응에 쓰는 모델이에요. 켜 두면 다음에 앱을 열 때 자동으로 켜지고, 끄면 꺼진 채로 열려요. 켜면 메모리를 2~3GB 써요. 파일 위치: ${container.aiModelsDir()}")
                         ModelCatalog.all.forEach { spec ->
                             ModelRow(container, spec, selected = ai.selected.id == spec.id, status = ai.statuses[spec.id] ?: ModelStatus.NotInstalled)
                         }
