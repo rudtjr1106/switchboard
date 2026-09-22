@@ -35,7 +35,8 @@ class IntegrationWriterTest {
 
     @Test
     fun `preview relativizes absolute paths`() {
-        val root = Path.of("/tmp/project")
+        // Windows 에서는 "/tmp/project" 가 절대 경로가 아니므로(드라이브 문자 없음) 실제 절대 경로를 쓴다
+        val root = Path.of("").toAbsolutePath().resolve("project")
         val plan = IntegrationPlan(
             files = listOf(GeneratedFile(root.resolve("app/A.kt"), "", FileAction.CREATE)),
             notes = emptyList(),
