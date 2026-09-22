@@ -179,11 +179,31 @@ spctl -a -vv -t install app/build/compose/binaries/main/dmg/*.dmg   # accepted /
 ```
 
 - Compose 는 jar 안의 `.dylib`·`.jnilib` 만 서명하므로, 빌드가 `.so` 중 Mach-O 파일(java-keyring 의 `osxkeychain.so`)을 따로 서명하고 앱을 다시 서명합니다. 이게 빠지면 공증이 통째로 거절됩니다
-- GitHub Actions 빌드는 아직 서명하지 않습니다. 서명된 DMG 는 로컬에서 만들어 릴리즈에 올리세요: `gh release upload <태그> Switchboard.dmg --clobber`
+- Compose 가 넣는 `Switchboard` 실행 파일 이름은 ASCII 여야 합니다 (위 "한글 이름" 항목)
+
+#### GitHub Actions 에서 서명하기
+
+`release.yml` 의 macOS 잡은 아래 시크릿이 모두 있으면 서명·공증하고, 하나라도 없으면 지금처럼 서명 없이 만듭니다 (포크의 PR 빌드도 그대로 돕니다).
+
+| 시크릿 | 값 |
+| --- | --- |
+| `MACOS_CERTIFICATE_P12` | Developer ID Application 인증서를 `.p12` 로 내보낸 뒤 base64 로 바꾼 문자열 |
+| `MACOS_CERTIFICATE_PASSWORD` | `.p12` 를 내보낼 때 정한 암호 |
+| `NOTARY_APPLE_ID` | Apple ID 메일 |
+| `NOTARY_TEAM_ID` | 팀 ID (예: `ABCDE12345`) |
+| `NOTARY_PASSWORD` | 앱 전용 암호 (account.apple.com → 로그인 및 보안) |
+
+`.p12` 만들기: 키체인 접근 → 로그인 → 내 인증서 → `Developer ID Application …` 우클릭 → 내보내기 → 개인 정보 교환(.p12) → 암호 지정. 그다음 base64 로 바꿔 복사합니다.
+
+```sh
+base64 -i ~/Desktop/switchboard.p12 | pbcopy   # 붙여넣고 나서 .p12 파일은 지우세요
+```
+
+워크플로는 러너에서 임시 키체인을 만들어 인증서를 넣고, `notarytool store-credentials` 로 그 키체인에 공증 프로필을 저장한 뒤 `packageMacDmg` 를 돌리고, 끝나면 키체인을 지웁니다. 빌드 로그에는 신원 이름만 남고 암호는 남지 않습니다.
 
 ## 알려진 제약
 
-- macOS 설치 파일은 서명·공증 전이라 처음 열 때 Gatekeeper 확인이 필요합니다
+- Windows 설치 파일은 서명하지 않아 처음 열 때 SmartScreen 경고가 뜹니다 (macOS 는 서명·공증합니다)
 - Windows 빌드는 GitHub Actions 의 `windows-latest` 러너에서 만듭니다. 이 저장소는 macOS 에서 개발됐고 Windows 실행은 CI 로만 검증합니다
 - java-llama.cpp 4.2.0 은 모델을 내려도 메모리를 완전히 돌려주지 않습니다 (4B → 1B 전환 시 이전 모델이 상주). 모델을 바꾸면 앱을 다시 켜는 편이 안전합니다
 - 번들된 llama.cpp(b4916)가 아는 아키텍처만 씁니다. Gemma 3 는 되고 Qwen3 는 로드되지 않습니다

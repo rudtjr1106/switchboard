@@ -32,6 +32,9 @@ val displayName = "스위치보드"
 val signingIdentity: String? = providers.environmentVariable("SWITCHBOARD_SIGNING_IDENTITY")
     .orElse(providers.gradleProperty("switchboard.signingIdentity")).orNull?.takeIf { it.isNotBlank() }
 
+/** CI 처럼 기본 키체인을 쓸 수 없을 때, 공증 프로필이 저장된 키체인 파일 경로 */
+val notaryKeychain: String? = providers.environmentVariable("SWITCHBOARD_NOTARY_KEYCHAIN").orNull?.takeIf { it.isNotBlank() }
+
 /** `xcrun notarytool store-credentials <이름>` 으로 저장한 공증 프로필 이름 */
 val notaryProfile: String = providers.environmentVariable("SWITCHBOARD_NOTARY_PROFILE")
     .orElse(providers.gradleProperty("switchboard.notaryProfile")).orElse("SwitchboardNotary").get()
@@ -258,8 +261,10 @@ val packageMacDmg by tasks.registering {
         val app = appDir.get().asFile.resolve("Switchboard.app")
         if (signingIdentity != null) signNativeLibrariesInJars(app, signingIdentity)
         // 서명했으면 공증 프로필이 있을 때 앱을 먼저 공증하고 티켓을 붙인다. 그래야 오프라인에서도 Gatekeeper 가 통과시킨다
-        val notarize = signingIdentity != null &&
-            exitCode("xcrun", "notarytool", "history", "--keychain-profile", notaryProfile) == 0
+        fun notaryCommand(vararg args: String): Array<String> =
+            (listOf("xcrun", "notarytool") + args + listOf("--keychain-profile", notaryProfile) +
+                (notaryKeychain?.let { listOf("--keychain", it) } ?: emptyList())).toTypedArray()
+        val notarize = signingIdentity != null && exitCode(*notaryCommand("history")) == 0
         if (signingIdentity != null && !notarize) {
             logger.warn("공증 프로필 '$notaryProfile' 이 없어 서명만 해요. xcrun notarytool store-credentials $notaryProfile … 으로 만들면 공증까지 해요")
         }
@@ -267,7 +272,7 @@ val packageMacDmg by tasks.registering {
             val zip = stage.parentFile.resolve("Switchboard-notarize.zip").apply { delete() }
             run("ditto", "-c", "-k", "--keepParent", app.absolutePath, zip.absolutePath)
             logger.lifecycle("앱 공증 중… (몇 분 걸려요)")
-            run("xcrun", "notarytool", "submit", zip.absolutePath, "--keychain-profile", notaryProfile, "--wait")
+            run(*notaryCommand("submit", zip.absolutePath, "--wait"))
             run("xcrun", "stapler", "staple", app.absolutePath)
         }
         run("ditto", app.absolutePath, bundle.absolutePath)
@@ -285,7 +290,7 @@ val packageMacDmg by tasks.registering {
         }
         if (notarize) {
             logger.lifecycle("DMG 공증 중…")
-            run("xcrun", "notarytool", "submit", dmg.absolutePath, "--keychain-profile", notaryProfile, "--wait")
+            run(*notaryCommand("submit", dmg.absolutePath, "--wait"))
             run("xcrun", "stapler", "staple", dmg.absolutePath)
             run("spctl", "--assess", "--type", "open", "--context", "context:primary-signature", "--verbose", dmg.absolutePath)
         }

@@ -24,6 +24,8 @@ jobs:
           - os: windows-latest
             task: packageMsi
             glob: app/build/compose/binaries/main/msi/*.msi
+    env:
+      MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -40,8 +42,48 @@ jobs:
           [ "$version" = "$tag" ] || { echo "gradle.properties 의 버전($version)과 태그($tag)가 달라요"; exit 1; }
       - name: 테스트
         run: ./gradlew test --console=plain
+      # 인증서와 공증 정보가 저장소 시크릿에 있으면 서명·공증한다. 없으면 서명 없이 만든다
+      - name: macOS 서명 준비
+        if: runner.os == 'macOS' && env.MACOS_CERTIFICATE_P12 != ''
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/switchboard.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          echo "$MACOS_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -k "$KEYCHAIN" -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          rm -f "$RUNNER_TEMP/certificate.p12"
+          # 서명할 때 암호를 묻지 않게 한다 (러너에는 사람이 없다)
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+          xcrun notarytool store-credentials "SwitchboardNotary" \
+            --apple-id "$NOTARY_APPLE_ID" --team-id "$NOTARY_TEAM_ID" --password "$NOTARY_PASSWORD" --keychain "$KEYCHAIN"
+          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN" | sed -n 's/.*"Developer ID Application: \(.*\)"/\1/p' | head -1)
+          [ -n "$IDENTITY" ] || { echo "키체인에서 Developer ID Application 인증서를 찾지 못했어요"; exit 1; }
+          echo "SWITCHBOARD_SIGNING_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+          echo "SWITCHBOARD_NOTARY_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          echo "서명 신원: $IDENTITY"
+
       - name: 설치 파일 만들기
         run: ./gradlew :app:${{ matrix.task }} --console=plain
+
+      - name: 서명 확인 (macOS)
+        if: runner.os == 'macOS' && env.SWITCHBOARD_SIGNING_IDENTITY != ''
+        run: spctl -a -vv -t install app/build/compose/binaries/main/dmg/*.dmg
+
+      - name: 키체인 정리
+        if: always() && runner.os == 'macOS'
+        run: |
+          security list-keychains -d user -s login.keychain-db || true
+          security delete-keychain "$RUNNER_TEMP/switchboard.keychain-db" || true
       - name: jpackage 로그
         if: failure()
         shell: bash
