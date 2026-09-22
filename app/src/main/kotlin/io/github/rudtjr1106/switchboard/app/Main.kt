@@ -36,7 +36,7 @@ fun main() {
     val container = createAppContainer()
 
     application {
-        val windowState = rememberWindowState(size = DpSize(1240.dp, 800.dp), position = WindowPosition(Alignment.Center))
+        val windowState = rememberWindowState(size = DpSize(1120.dp, 720.dp), position = WindowPosition(Alignment.Center))
         var showSettings by remember { mutableStateOf(false) }
         var showSetup by remember { mutableStateOf(false) }
         val workspace by container.workspace.state.collectAsState()
@@ -52,7 +52,7 @@ fun main() {
             title = AppPaths.APP_NAME,
             icon = painterResource("icon.png"),
         ) {
-            LaunchedEffect(Unit) { window.minimumSize = Dimension(980, 660) }
+            LaunchedEffect(Unit) { window.minimumSize = Dimension(940, 620) }
 
             val meta = AppPaths.os == OperatingSystem.MAC
             MenuBar {
