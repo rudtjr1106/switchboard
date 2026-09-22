@@ -164,7 +164,22 @@ Gemma 3 1B 로 잰 결과 (M1 16GB):
 2. 같은 버전으로 태그를 푸시합니다: `git tag v1.2.0 && git push origin v1.2.0`
 3. `release.yml` 이 macOS 와 Windows 러너에서 설치 파일을 만들어 릴리즈에 `Switchboard.dmg` · `Switchboard.msi` 로 붙입니다
 
-> macOS 설치 파일은 서명·공증되지 않은 상태입니다. Developer ID 인증서가 있으면 `app/build.gradle.kts` 의 `macOS { signing { } notarization { } }` 을 채우세요.
+### macOS 서명·공증
+
+Developer ID 인증서와 공증 프로필이 있으면 `packageMacDmg` 가 서명·공증까지 합니다. 둘 다 없으면 서명 없이 만듭니다.
+
+```sh
+# 한 번만: 공증 정보 저장 (앱 전용 암호는 account.apple.com 에서 만듭니다)
+xcrun notarytool store-credentials "SwitchboardNotary" --apple-id "<메일>" --team-id "<팀 ID>" --password "<앱 전용 암호>"
+# 한 번만: 서명 신원 저장 (~/.gradle/gradle.properties)
+echo 'switchboard.signingIdentity=<인증서의 이름 부분, 예: Hong Gildong (ABCDE12345)>' >> ~/.gradle/gradle.properties
+
+./gradlew :app:packageMacDmg   # 앱 서명 → 공증 → staple → DMG 서명 → 공증 → staple
+spctl -a -vv -t install app/build/compose/binaries/main/dmg/*.dmg   # accepted / Notarized Developer ID 확인
+```
+
+- Compose 는 jar 안의 `.dylib`·`.jnilib` 만 서명하므로, 빌드가 `.so` 중 Mach-O 파일(java-keyring 의 `osxkeychain.so`)을 따로 서명하고 앱을 다시 서명합니다. 이게 빠지면 공증이 통째로 거절됩니다
+- GitHub Actions 빌드는 아직 서명하지 않습니다. 서명된 DMG 는 로컬에서 만들어 릴리즈에 올리세요: `gh release upload <태그> Switchboard.dmg --clobber`
 
 ## 알려진 제약
 

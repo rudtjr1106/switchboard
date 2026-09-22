@@ -2,6 +2,7 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.LinkOption
+import java.util.zip.ZipFile
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -206,7 +207,56 @@ val packageMacDmg by tasks.registering {
         val bundle = stage.resolve("$displayName.app")
         // ditto 는 확장 속성과 서명을 그대로 옮긴다
         fun exitCode(vararg command: String): Int = ProcessBuilder(*command).redirectErrorStream(true).start().waitFor()
+        fun runIn(dir: File, vararg command: String) {
+            val process = ProcessBuilder(*command).directory(dir).inheritIO().start()
+            check(process.waitFor() == 0) { "${command.first()} 실패: ${command.joinToString(" ")}" }
+        }
+
+        /** Mach-O(맥 실행 파일)인지. 리눅스 .so 는 서명할 필요도 없고 되지도 않는다 */
+        fun isMachO(file: File): Boolean = file.inputStream().use { stream ->
+            val head = ByteArray(4)
+            if (stream.read(head) != 4) return@use false
+            val magic = ((head[0].toInt() and 0xFF) shl 24) or ((head[1].toInt() and 0xFF) shl 16) or
+                ((head[2].toInt() and 0xFF) shl 8) or (head[3].toInt() and 0xFF)
+            magic in setOf(0xFEEDFACE.toInt(), 0xFEEDFACF.toInt(), 0xCAFEBABE.toInt(), 0xCEFAEDFE.toInt(), 0xCFFAEDFE.toInt())
+        }
+
+        /**
+         * jar 안의 맥 네이티브 라이브러리를 서명한다
+         *
+         * Compose 는 .dylib 과 .jnilib 만 서명해서 java-keyring 의 osxkeychain.so 같은 파일이 빠진다.
+         * 서명되지 않은 Mach-O 가 하나라도 있으면 Apple 공증이 통째로 거절된다.
+         */
+        fun signNativeLibrariesInJars(appRoot: File, identity: String) {
+            val jars = appRoot.resolve("Contents/app").listFiles { file -> file.name.endsWith(".jar") }?.sorted().orEmpty()
+            val work = layout.buildDirectory.dir("mac-dmg/jar-sign").get().asFile.also { deleteTree(it); it.mkdirs() }
+            var signed = 0
+            for (jar in jars) {
+                val entries = ZipFile(jar).use { zip ->
+                    zip.entries().toList().map { it.name }.filter { it.endsWith(".so") }
+                }
+                for (entry in entries) {
+                    runIn(work, "unzip", "-o", "-q", jar.absolutePath, entry)
+                    val extracted = work.resolve(entry)
+                    if (!isMachO(extracted)) continue
+                    run("codesign", "--force", "--timestamp", "--sign", "Developer ID Application: $identity", extracted.absolutePath)
+                    runIn(work, "zip", "-q", jar.absolutePath, entry)
+                    signed++
+                    logger.lifecycle("jar 안 네이티브 서명: ${jar.name} :: $entry")
+                }
+            }
+            if (signed > 0) {
+                // jar 를 고쳤으니 앱 번들 서명을 다시 한다
+                val entitlements = layout.buildDirectory.dir("compose/default-resources").get().asFile
+                    .walkTopDown().firstOrNull { it.name == "default-entitlements.plist" }
+                val command = mutableListOf("codesign", "--force", "--options", "runtime", "--timestamp")
+                entitlements?.let { command += listOf("--entitlements", it.absolutePath) }
+                command += listOf("--sign", "Developer ID Application: $identity", appRoot.absolutePath)
+                run(*command.toTypedArray())
+            }
+        }
         val app = appDir.get().asFile.resolve("Switchboard.app")
+        if (signingIdentity != null) signNativeLibrariesInJars(app, signingIdentity)
         // 서명했으면 공증 프로필이 있을 때 앱을 먼저 공증하고 티켓을 붙인다. 그래야 오프라인에서도 Gatekeeper 가 통과시킨다
         val notarize = signingIdentity != null &&
             exitCode("xcrun", "notarytool", "history", "--keychain-profile", notaryProfile) == 0
