@@ -3,6 +3,10 @@ package io.github.rudtjr1106.switchboard.ai
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpRequestTimeoutException
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.HttpTimeoutConfig
+import io.ktor.client.plugins.pluginOrNull
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.header
 import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.HttpResponse
@@ -15,6 +19,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import java.io.IOException
@@ -40,7 +45,12 @@ private val logger = KotlinLogging.logger {}
  * 다음 [download] 가 `Range` 헤더로 이어받는다. Hugging Face 는 CDN 으로 302 를 보내므로 [client] 는
  * 리다이렉트를 따라가야 한다(Ktor 기본값). 서버가 Range 를 무시하고 200 을 주면 처음부터 다시 받는다.
  */
-class FileModelStore(override val directory: Path, private val client: HttpClient) : ModelStore {
+class FileModelStore(
+    override val directory: Path,
+    private val client: HttpClient,
+    /** 끊긴 뒤 다시 이을 때 기다리는 시간의 기본 단위. 테스트에서 0 으로 줄인다 */
+    private val retryDelayMs: Long = RETRY_DELAY_MS,
+) : ModelStore {
 
     override fun installedPath(spec: ModelSpec): Path? {
         val path = directory.resolve(spec.fileName)
@@ -59,7 +69,7 @@ class FileModelStore(override val directory: Path, private val client: HttpClien
                 return@flow
             }
             directory.createDirectories()
-            fetch(spec, part)
+            fetchWithRetry(spec, part)
             if (spec.sizeBytes > 0 && part.fileSize() != spec.sizeBytes) {
                 logger.warn { "${spec.id}: 받은 크기 ${part.fileSize()} ≠ 기대 ${spec.sizeBytes}, .part 삭제" }
                 // 이어받아도 같은 결과일 테니 버린다
@@ -86,11 +96,44 @@ class FileModelStore(override val directory: Path, private val client: HttpClien
 
     private fun partPath(spec: ModelSpec): Path = directory.resolve(spec.fileName + PART_SUFFIX)
 
+    /**
+     * 연결이 끊기거나 멈추면 받은 데까지 두고 이어받기로 다시 시도한다
+     *
+     * 수 GB 파일은 와이파이가 잠깐 흔들려도 끊긴다. 사용자가 다시 누르지 않아도 [MAX_ATTEMPTS] 번까지 스스로 잇는다.
+     * HTTP 오류(404 등)는 다시 해도 같아서 바로 실패로 낸다.
+     */
+    private suspend fun FlowCollector<ModelDownloadEvent>.fetchWithRetry(spec: ModelSpec, part: Path) {
+        var attempt = 1
+        while (true) {
+            try {
+                fetch(spec, part)
+                return
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: DownloadFailed) {
+                throw e
+            } catch (e: IOException) {
+                if (attempt >= MAX_ATTEMPTS) throw e
+                logger.warn { "${spec.id}: 연결이 끊겨 이어받기 다시 시도 ($attempt/$MAX_ATTEMPTS): ${e.message}" }
+                attempt++
+                delay(retryDelayMs * attempt)
+            }
+        }
+    }
+
     /** .part 가 있으면 그 뒤부터 요청한다. 416 이면 .part 가 서버 파일보다 크다는 뜻이라 지우고 한 번 더 */
     private suspend fun FlowCollector<ModelDownloadEvent>.fetch(spec: ModelSpec, part: Path) {
         val resumeFrom = if (part.isRegularFile()) part.fileSize() else 0L
         val statement = client.prepareGet(spec.downloadUrl) {
             if (resumeFrom > 0) header(HttpHeaders.Range, "bytes=$resumeFrom-")
+            // 공용 클라이언트는 요청 전체를 60초로 끊는다. 수 GB 는 그보다 오래 걸리므로 전체 제한은 풀고,
+            // 데이터가 멈춘 경우만 소켓 제한으로 잡는다
+            if (client.pluginOrNull(HttpTimeout) != null) {
+                timeout {
+                    requestTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS
+                    socketTimeoutMillis = STALL_TIMEOUT_MS
+                }
+            }
         }
         val restart = statement.execute { response ->
             when (response.status) {
@@ -162,6 +205,11 @@ class FileModelStore(override val directory: Path, private val client: HttpClien
 
     companion object {
         const val PART_SUFFIX = ".part"
+        const val MAX_ATTEMPTS = 4
+        const val RETRY_DELAY_MS = 2_000L
+
+        /** 이만큼 데이터가 한 바이트도 오지 않으면 멈춘 것으로 보고 이어받기로 넘어간다 */
+        const val STALL_TIMEOUT_MS = 60_000L
         private const val BUFFER_SIZE = 64 * 1024
         private const val PROGRESS_STEP = 512L * 1024
     }

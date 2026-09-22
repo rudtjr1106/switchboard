@@ -56,6 +56,30 @@ class FileModelStoreTest {
         respond(data, headers = headersOf(HttpHeaders.ContentLength, data.size.toString()))
 
     @Test
+    fun `the shared client request timeout does not cut a long download`() = runTest {
+        // 앱의 공용 클라이언트처럼 요청 전체 제한이 있는 클라이언트. 제한보다 오래 걸리는 응답도 끝까지 받아야 한다
+        val slow = HttpClient(MockEngine { kotlinx.coroutines.delay(300); full() }) {
+            install(io.ktor.client.plugins.HttpTimeout) { requestTimeoutMillis = 100 }
+        }
+        val events = FileModelStore(dir, slow, retryDelayMs = 0).download(spec).toList()
+        assertEquals(ModelDownloadEvent.Done(target), events.last())
+        assertContentEquals(data, target.readBytes())
+    }
+
+    @Test
+    fun `a dropped connection resumes on its own`() = runTest {
+        var calls = 0
+        val flaky = client {
+            calls++
+            if (calls == 1) throw java.io.IOException("Connection reset")
+            full()
+        }
+        val events = FileModelStore(dir, flaky, retryDelayMs = 0).download(spec).toList()
+        assertEquals(2, calls)
+        assertEquals(ModelDownloadEvent.Done(target), events.last())
+    }
+
+    @Test
     fun `fresh download reports progress then done`() = runTest {
         val store = FileModelStore(dir, client { full() })
         assertNull(store.installedPath(spec))
