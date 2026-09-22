@@ -9,6 +9,12 @@ plugins {
 
 kotlin {
     jvmToolchain(21)
+    compilerOptions {
+        optIn.addAll(
+            "androidx.compose.material3.ExperimentalMaterial3Api",
+            "androidx.compose.foundation.ExperimentalFoundationApi",
+        )
+    }
 }
 
 val appVersion: String = providers.gradleProperty("switchboard.version").get()
@@ -58,11 +64,15 @@ dependencies {
     implementation(libs.koin.core)
     implementation(libs.koin.compose)
     implementation(libs.koin.compose.viewmodel)
+    // DI 조립에서 GitHub/AI 모듈에 넘길 HttpClient 를 만든다
+    implementation(libs.ktor.client.core)
     implementation(libs.kotlin.logging)
     implementation(libs.logback.classic)
 
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
+    // core:config 의 테스트 픽스처(UMC 저장소 파일)를 앱 테스트에서도 쓴다
+    testImplementation(testFixtures(project(":core:config")))
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

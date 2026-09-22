@@ -44,4 +44,10 @@ object IntegrationWriter {
             target.toFile().writeText(file.content)
         }
     }
+
+    /** 쓰게 될 파일들의 루트 기준 상대 경로 (`/` 구분). 적용 전에 목록으로 보여줄 때 쓴다 */
+    fun preview(root: Path, plan: IntegrationPlan): List<String> = plan.files.map { file ->
+        val relative = if (file.path.isAbsolute) root.relativize(file.path) else file.path
+        relative.joinToString("/")
+    }
 }

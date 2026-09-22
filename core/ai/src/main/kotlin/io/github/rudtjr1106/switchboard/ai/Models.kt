@@ -37,7 +37,7 @@ object ModelCatalog {
         displayName = "Gemma 3 1B (가벼움)",
         fileName = "gemma-3-1b-it-Q4_K_M.gguf",
         downloadUrl = "https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q4_K_M.gguf",
-        sizeBytes = 806_000_000,
+        sizeBytes = 806_058_272,
         description = "빠르지만 결과 품질은 낮아요. 화면 라벨 붙이기 정도에 알맞아요.",
     )
 

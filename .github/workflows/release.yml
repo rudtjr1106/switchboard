@@ -1,0 +1,70 @@
+name: Release
+
+# v* 태그를 푸시하면 macOS(DMG)·Windows(MSI) 설치 파일을 만들어 GitHub 릴리즈에 붙인다.
+# 태그는 gradle.properties 의 switchboard.version 과 같아야 앱 안의 업데이트 확인이 어긋나지 않는다.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: 패키징 (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            task: packageDmg
+            glob: app/build/compose/binaries/main/dmg/*.dmg
+          - os: windows-latest
+            task: packageMsi
+            glob: app/build/compose/binaries/main/msi/*.msi
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: 태그와 버전이 같은지 확인
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          version=$(grep '^switchboard.version=' gradle.properties | cut -d= -f2)
+          tag=${GITHUB_REF_NAME#v}
+          [ "$version" = "$tag" ] || { echo "gradle.properties 의 버전($version)과 태그($tag)가 달라요"; exit 1; }
+      - name: 테스트
+        run: ./gradlew test --console=plain
+      - name: 설치 파일 만들기
+        run: ./gradlew :app:${{ matrix.task }} --console=plain -Pswitchboard.githubClientId=${{ secrets.SWITCHBOARD_GITHUB_CLIENT_ID }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.os }}
+          path: ${{ matrix.glob }}
+
+  release:
+    name: 릴리즈 올리기
+    needs: package
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: installers
+          merge-multiple: true
+      - name: 파일 이름 고정 (releases/latest/download/... 링크가 늘 최신을 가리키게)
+        run: |
+          ls -R installers
+          mv installers/*.dmg installers/Switchboard.dmg
+          mv installers/*.msi installers/Switchboard.msi
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            installers/Switchboard.dmg
+            installers/Switchboard.msi
+          generate_release_notes: true

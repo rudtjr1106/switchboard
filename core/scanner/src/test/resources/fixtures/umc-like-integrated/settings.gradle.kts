@@ -1,0 +1,44 @@
+pluginManagement {
+    repositories {
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
+        mavenCentral()
+        gradlePluginPortal()
+        maven { url = uri("https://jitpack.io") }
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
+        maven { url = uri("https://devrepo.kakao.com/nexus/content/groups/public/") }
+        maven { url = uri("https://repository.map.naver.com/archive/maven") }
+    }
+}
+
+rootProject.name = "UMC product"
+include(":app")
+include(":lint-rules")
+include(":benchmark")
+include(":data")
+include(":domain")
+include(":presentation")
+include(":presentation:act")
+include(":presentation:splash")
+include(":presentation:home")
+include(":presentation:component")
+include(":presentation:login")
+include(":presentation:study")
+include(":presentation:mypage")
+include(":presentation:signUp")
+include(":presentation:permission")
+include(":presentation:failCode")
+include(":presentation:community")
+include(":presentation:notice")
