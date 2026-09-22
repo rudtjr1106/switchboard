@@ -49,7 +49,7 @@ open class FakeConfigRepository(
             config = RepoFile("app-config.json", configSha, configText),
             schema = RepoFile("schema.json", schemaSha, schemaText),
             branch = baseBranch,
-            loadedAt = Instant.parse("2026-09-22T00:00:00Z"),
+            loadedAt = Instant.now(),
         )
     }
 

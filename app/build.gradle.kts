@@ -13,6 +13,7 @@ kotlin {
         optIn.addAll(
             "androidx.compose.material3.ExperimentalMaterial3Api",
             "androidx.compose.foundation.ExperimentalFoundationApi",
+            "androidx.compose.ui.ExperimentalComposeUiApi",
         )
     }
 }
@@ -80,9 +81,13 @@ tasks.test {
     useJUnitPlatform()
 }
 
+// run/패키징이 Gradle 을 띄운 JDK 가 아니라 툴체인 JDK(21)를 쓰게 한다. jpackage 도 이 JDK 로 돈다
+val toolchainLauncher = javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) }
+
 compose.desktop {
     application {
         mainClass = "io.github.rudtjr1106.switchboard.app.MainKt"
+        javaHome = toolchainLauncher.get().metadata.installationPath.asFile.absolutePath
 
         jvmArgs += listOf(
             "-Xmx2g",

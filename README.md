@@ -15,6 +15,12 @@
 
 [UMC-PRODUCT/umc-product-iOS-remote-config](https://github.com/UMC-PRODUCT/umc-product-iOS-remote-config) 의 macOS 편집 앱(UMC Launchpad)에서 착안했고, [umc-product-android-config](https://github.com/UMC-PRODUCT/umc-product-android-config) 와 같은 저장소 형식을 씁니다.
 
+![Switchboard 편집 화면. 왼쪽 사이드바에서 안내를 고르고 가운데 폼에서 값을 고치고 오른쪽 Android 미리보기로 모양을 확인합니다](docs/images/editor.png)
+
+| 로그인 | 적용 확인 (모든 화면 차단 경고) |
+|---|---|
+| ![GitHub 로그인 화면](docs/images/login.png) | ![변경 사항 적용 시트](docs/images/apply-dialog.png) |
+
 ## 할 수 있는 것
 
 | | |
@@ -95,6 +101,14 @@ Kotlin 2.4 · Compose Multiplatform 1.12 (Desktop) · Gradle 9. JDK 는 툴체�
 | `core/ai` | java-llama.cpp 엔진, 모델 내려받기, 문구·라벨·코드 적응 서비스 |
 | `core/scanner` | Android 프로젝트 스캔(Gradle 파일·내비게이션 목적지), 연동 코드 템플릿 |
 | `app` | Compose Desktop UI, 세션·워크스페이스·편집기 상태 |
+
+### 화면 스크린샷
+
+`app/src/test/.../ui/ScreenshotTest.kt` 가 주요 화면을 헤드리스로 그려 `app/build/screenshots/` 에 PNG 로 남깁니다. README 의 이미지는 여기서 나온 것입니다.
+
+```sh
+./gradlew :app:test --tests '*ScreenshotTest*'
+```
 
 ### 릴리즈
 
