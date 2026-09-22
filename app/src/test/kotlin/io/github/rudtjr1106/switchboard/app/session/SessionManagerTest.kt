@@ -20,6 +20,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SessionManagerTest {
@@ -37,7 +38,7 @@ class SessionManagerTest {
         settings.update { it.copy(githubClientId = clientId) }
         val factory = FakeClientFactory(api) { error("unused") }
         val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
-        return SessionManager(tokenStore, ghCli, deviceFlow, factory, settings, scope) to factory
+        return SessionManager(tokenStore, ghCli, deviceFlow, factory, settings, scope, defaultClientId = "") to factory
     }
 
     @Test
@@ -89,6 +90,28 @@ class SessionManagerTest {
     }
 
     @Test
+    fun `disconnect clears token and settings and points to the revoke page`() = runTest {
+        val store = FakeTokenStore(GitHubToken("t", TokenSource.DEVICE_FLOW))
+        val (manager, _) = manager(tokenStore = store, clientId = "client-123")
+        manager.restore()
+        assertIs<SessionState.SignedIn>(manager.state.value)
+        val url = manager.disconnect()
+        assertEquals("https://github.com/settings/connections/applications/client-123", url)
+        assertNull(store.stored)
+        val out = assertIs<SessionState.SignedOut>(manager.state.value)
+        assertTrue(out.notice!!.contains("Revoke"))
+    }
+
+    @Test
+    fun `gh cli tokens are never sent to a revoke page`() = runTest {
+        val (manager, _) = manager(ghCli = FakeGhCli(installed = true, token = GitHubToken("gh", TokenSource.GH_CLI)))
+        manager.restore()
+        manager.signInWithGhCli()
+        assertNull(manager.disconnect())
+        assertEquals("https://github.com/settings/tokens", manager.revokeUrl(TokenSource.MANUAL))
+    }
+
+    @Test
     fun `gh cli fallback and sign out`() = runTest {
         val store = FakeTokenStore()
         val (manager, _) = manager(tokenStore = store, ghCli = FakeGhCli(installed = true, token = GitHubToken("gh", TokenSource.GH_CLI)))
@@ -97,7 +120,7 @@ class SessionManagerTest {
         assertIs<SessionState.SignedIn>(manager.state.value)
         assertEquals(TokenSource.GH_CLI, store.stored?.source)
         manager.signOut()
-        assertIs<SessionState.SignedOut>(manager.state.value)
+        assertEquals("로그아웃했어요.", assertIs<SessionState.SignedOut>(manager.state.value).notice)
         assertNull(store.stored)
     }
 }

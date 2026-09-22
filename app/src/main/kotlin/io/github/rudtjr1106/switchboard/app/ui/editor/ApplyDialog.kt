@@ -38,6 +38,7 @@ import io.github.rudtjr1106.switchboard.app.editor.ApplyState
 import io.github.rudtjr1106.switchboard.app.editor.EditorModel
 import io.github.rudtjr1106.switchboard.app.editor.EditorState
 import io.github.rudtjr1106.switchboard.app.platform.DesktopActions
+import io.github.rudtjr1106.switchboard.app.ui.components.DialogHeader
 import io.github.rudtjr1106.switchboard.app.ui.components.Caption
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteBanner
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteKind
@@ -69,7 +70,7 @@ fun ApplyDialog(editor: EditorModel, state: EditorState) {
 
 @Composable
 private fun Confirming(editor: EditorModel, apply: ApplyState.Confirming) {
-    Text("변경 사항 적용", style = MaterialTheme.typography.titleLarge)
+    DialogHeader("변경 사항 적용", onClose = editor::closeApply)
     if (apply.isDangerous) {
         NoteBanner("모든 화면을 막는 차단 안내가 켜져요. 적용 후 최대 10분 안에 모든 사용자가 앱을 쓸 수 없게 돼요.", NoteKind.ERROR)
     }
@@ -123,7 +124,7 @@ private fun ChangeRow(change: Change) {
 
 @Composable
 private fun Progress(title: String, progress: ApplyProgress, error: String?, editor: EditorModel) {
-    Text(title, style = MaterialTheme.typography.titleLarge)
+    DialogHeader(title, onClose = editor::closeApply, closeEnabled = error != null)
     Column {
         ApplyStep.entries.forEachIndexed { index, step ->
             StepRow(step.title, progress.state(step), isLast = index == ApplyStep.entries.lastIndex)

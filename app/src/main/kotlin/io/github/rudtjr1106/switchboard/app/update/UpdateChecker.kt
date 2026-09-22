@@ -41,7 +41,7 @@ class UpdateChecker(
                 val latest = release?.let { VersionNumber.parse(it.tagName) }
                 val current = VersionNumber.parse(BuildInfo.VERSION)
                 if (release == null || latest == null || current == null || latest <= current) {
-                    _lastResult.value = "최신 버전을 쓰고 있어요 (Switchboard ${BuildInfo.VERSION})"
+                    _lastResult.value = "최신 버전을 쓰고 있어요 (${AppPaths.DISPLAY_NAME} ${BuildInfo.VERSION})"
                     return@launch
                 }
                 if (!userInitiated && settings.current.skippedUpdateTag == release.tagName) return@launch

@@ -26,7 +26,8 @@ private val logger = KotlinLogging.logger {}
 sealed interface SessionState {
     data object Restoring : SessionState
 
-    data class SignedOut(val error: String? = null, val ghCliAvailable: Boolean = false) : SessionState
+    /** @property notice 로그아웃·연결 해제 뒤 로그인 화면에 띄울 안내 (오류가 아님) */
+    data class SignedOut(val error: String? = null, val ghCliAvailable: Boolean = false, val notice: String? = null) : SessionState
 
     /** Device Flow 진행 중. 사용자가 브라우저에서 [userCode] 를 입력하길 기다린다 */
     data class SigningIn(
@@ -56,6 +57,8 @@ class SessionManager(
     private val clientFactory: GitHubClientFactory,
     private val settings: SettingsStore,
     private val scope: CoroutineScope,
+    /** 빌드에 넣은 OAuth App Client ID. 테스트에서 바꿔 끼운다 */
+    private val defaultClientId: String = BuildInfo.GITHUB_CLIENT_ID,
 ) {
     private val _state = MutableStateFlow<SessionState>(SessionState.Restoring)
     val state: StateFlow<SessionState> = _state.asStateFlow()
@@ -64,7 +67,7 @@ class SessionManager(
 
     /** 설정 > Client ID 가 우선, 없으면 빌드에 넣은 값. 둘 다 없으면 Device Flow 를 쓸 수 없다 */
     val clientId: String?
-        get() = settings.current.githubClientId?.takeIf { it.isNotBlank() } ?: BuildInfo.GITHUB_CLIENT_ID.takeIf { it.isNotBlank() }
+        get() = settings.current.githubClientId?.takeIf { it.isNotBlank() } ?: defaultClientId.takeIf { it.isNotBlank() }
 
     val signedIn: SessionState.SignedIn? get() = _state.value as? SessionState.SignedIn
 
@@ -148,11 +151,38 @@ class SessionManager(
         _state.value = SessionState.SignedOut(ghCliAvailable = ghCliAvailableCached())
     }
 
-    fun signOut() {
+    fun signOut(notice: String? = "로그아웃했어요.") {
         signInJob?.cancel()
         tokenStore.clear()
         settings.update { it.copy(lastRepository = null) }
-        _state.value = SessionState.SignedOut(ghCliAvailable = ghCliAvailableCached())
+        _state.value = SessionState.SignedOut(ghCliAvailable = ghCliAvailableCached(), notice = notice)
+    }
+
+    /**
+     * 연결 해제. 스위치보드는 따로 회원 가입이 없어서 탈퇴 대신 이것을 쓴다
+     *
+     * 이 컴퓨터의 토큰과 스위치보드 설정을 지운다. GitHub 쪽 권한은 client secret 없이는 앱이 취소할 수 없어서,
+     * 사용자가 직접 취소할 페이지 주소를 돌려준다 (gh CLI 토큰이면 null: gh 자체의 권한이라 건드리지 않는다).
+     */
+    fun disconnect(): String? {
+        val url = revokeUrl(signedIn?.token?.source)
+        signInJob?.cancel()
+        tokenStore.clear()
+        settings.reset()
+        val notice = if (url != null) {
+            "연결을 해제하고 이 컴퓨터의 데이터를 지웠어요. 열린 GitHub 페이지에서 Revoke 를 누르면 권한까지 없어져요."
+        } else {
+            "연결을 해제하고 이 컴퓨터의 데이터를 지웠어요."
+        }
+        _state.value = SessionState.SignedOut(ghCliAvailable = ghCliAvailableCached(), notice = notice)
+        return url
+    }
+
+    /** 이 로그인의 권한을 GitHub 에서 취소하는 페이지 */
+    fun revokeUrl(source: TokenSource?): String? = when (source) {
+        TokenSource.DEVICE_FLOW -> clientId?.let { "https://github.com/settings/connections/applications/$it" }
+        TokenSource.MANUAL -> "https://github.com/settings/tokens"
+        TokenSource.GH_CLI, null -> null
     }
 
     private suspend fun finishSignIn(token: GitHubToken) {

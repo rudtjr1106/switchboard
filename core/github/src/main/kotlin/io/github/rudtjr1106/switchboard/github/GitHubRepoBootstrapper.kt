@@ -120,7 +120,7 @@ class GitHubRepoBootstrapper(
     }
 
     companion object {
-        const val COMMIT_MESSAGE = "chore: Switchboard 초기 설정"
+        const val COMMIT_MESSAGE = "chore: 스위치보드 초기 설정"
         private const val WORKFLOW_DIR = ".github/workflows/"
         private const val READY_ATTEMPTS = 5
     }

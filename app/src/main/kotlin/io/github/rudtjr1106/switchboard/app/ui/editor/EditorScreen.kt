@@ -16,10 +16,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.CloudUpload
-import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Undo
+import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
@@ -78,7 +78,7 @@ fun EditorScreen(
             onOpenGitHub = { DesktopActions.openUrl(repo.htmlUrl) },
             onOpenSettings = onOpenSettings,
             onOpenSetup = onOpenSetup,
-            onSwitchRepo = { container.workspace.close(session) },
+            onSwitchRepo = { container.workspace.switchRepository(session) },
         )
         HorizontalDivider()
         when (val load = state.loadState) {
@@ -87,7 +87,7 @@ fun EditorScreen(
                 Column(Modifier.width(480.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     NoteBanner(load.message, NoteKind.ERROR)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { container.workspace.close(session) }) { Text("다른 저장소 열기") }
+                        OutlinedButton(onClick = { container.workspace.switchRepository(session) }) { Text("다른 저장소 열기") }
                         Button(onClick = editor::load) { Text("다시 시도") }
                     }
                 }
@@ -147,12 +147,12 @@ private fun Toolbar(
             Text(subtitle(editorState), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         ToolbarIcon(Icons.Outlined.Refresh, "새로고침", onReload)
-        ToolbarIcon(Icons.Outlined.OpenInNew, "GitHub 에서 열기", onOpenGitHub)
+        ToolbarIcon(Icons.AutoMirrored.Outlined.OpenInNew, "GitHub 에서 열기", onOpenGitHub)
         ToolbarIcon(Icons.Outlined.Build, "Android 프로젝트 세팅", onOpenSetup)
         ToolbarIcon(Icons.Outlined.Settings, "설정", onOpenSettings)
         if (editorState.hasChanges) {
             OutlinedButton(onClick = onRevert) {
-                Icon(Icons.Outlined.Undo, null, Modifier.size(16.dp))
+                Icon(Icons.AutoMirrored.Outlined.Undo, null, Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("되돌리기")
             }

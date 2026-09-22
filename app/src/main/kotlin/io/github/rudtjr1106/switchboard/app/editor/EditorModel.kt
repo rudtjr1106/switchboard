@@ -221,7 +221,7 @@ class EditorModel(
             append("### 변경 사항\n\n")
             confirming.changes.forEach { append("- ").append(it.text).append('\n') }
             if (confirming.memo.isNotBlank()) append("\n### 메모\n\n").append(confirming.memo.trim()).append('\n')
-            append("\nSwitchboard 에서 적용")
+            append("\n스위치보드에서 적용")
         }
         val request = ApplyRequest(
             files = listOf(FileChange(RepoTemplates.CONFIG_PATH, ConfigCodec.encode(draft), fileShas[RepoTemplates.CONFIG_PATH])),

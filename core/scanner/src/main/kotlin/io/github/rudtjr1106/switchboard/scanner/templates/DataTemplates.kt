@@ -40,7 +40,7 @@ internal object RemoteConfigApiFile {
  * 원격 설정 파일 조회
  *
  * API 서버가 아니라 GitHub Pages 에 올라간 정적 JSON 이라 서버 응답 봉투(success/code/result)가 없다.
- * 파일은 원격 설정 저장소(${ctx.repoFullName})가 올린다. Switchboard 가 만든 파일이다.
+ * 파일은 원격 설정 저장소(${ctx.repoFullName})가 올린다. 스위치보드가 만든 파일이다.
  */
 interface RemoteConfigApi {
 
@@ -73,7 +73,7 @@ interface RemoteConfigApi {
  * 원격 설정 파일 조회
  *
  * API 서버가 아니라 GitHub Pages 에 올라간 정적 JSON 이라 서버 응답 봉투(success/code/result)가 없다.
- * 파일은 원격 설정 저장소(${ctx.repoFullName})가 올린다. Switchboard 가 만든 파일이다.
+ * 파일은 원격 설정 저장소(${ctx.repoFullName})가 올린다. 스위치보드가 만든 파일이다.
  */
 class RemoteConfigApi(
     private val client: HttpClient,
@@ -104,7 +104,7 @@ internal object AppConfigResponseFile {
             ctx.dataPackage,
             s.imports + listOf("${ctx.modelPackage}.RemoteNotice", "${ctx.modelPackage}.RemoteNoticeTemplate"),
             """
-/** 원격 설정 저장소(${ctx.repoFullName})의 app-config.json 그대로. Switchboard 가 만든 파일이다 */
+/** 원격 설정 저장소(${ctx.repoFullName})의 app-config.json 그대로. 스위치보드가 만든 파일이다 */
 ${s.classAnnotation}data class AppConfigResponse(
     ${s.field("version")}val version: Int?${s.default},
     ${s.field("notices")}val notices: List<RemoteNoticeResponse>?${s.default},
@@ -156,7 +156,7 @@ internal object RemoteConfigRemoteDataSourceFile {
         ctx.dataPackage,
         emptyList(),
         """
-/** 원격 설정 저장소(${ctx.repoFullName})의 설정 파일. Switchboard 가 만든 파일이다 */
+/** 원격 설정 저장소(${ctx.repoFullName})의 설정 파일. 스위치보드가 만든 파일이다 */
 interface RemoteConfigRemoteDataSource {
 
     // 원격 설정 파일 조회
@@ -171,7 +171,7 @@ internal object RemoteConfigRemoteDataSourceImplFile {
         ctx.dataPackage,
         listOf("kotlinx.coroutines.CancellationException") + ctx.injectImports,
         """
-/** 네트워크로 받고, 안 되면 디스크 캐시로 버틴다. 원격 설정 저장소(${ctx.repoFullName}) 전용. Switchboard 가 만든 파일이다 */
+/** 네트워크로 받고, 안 되면 디스크 캐시로 버틴다. 원격 설정 저장소(${ctx.repoFullName}) 전용. 스위치보드가 만든 파일이다 */
 class RemoteConfigRemoteDataSourceImpl${ctx.injectConstructor}(
     private val remoteConfigApi: RemoteConfigApi,
 ) : RemoteConfigRemoteDataSource {
@@ -211,7 +211,7 @@ internal object RemoteConfigRepositoryImplFile {
         ctx.dataPackage,
         listOf("${ctx.modelPackage}.RemoteNotice", "${ctx.repositoryPackage}.RemoteConfigRepository") + ctx.injectImports,
         """
-/** 원격 설정 저장소(${ctx.repoFullName}) 응답을 도메인 모델로 바꾼다. Switchboard 가 만든 파일이다 */
+/** 원격 설정 저장소(${ctx.repoFullName}) 응답을 도메인 모델로 바꾼다. 스위치보드가 만든 파일이다 */
 class RemoteConfigRepositoryImpl${ctx.injectConstructor}(
     private val remoteConfigRemoteDataSource: RemoteConfigRemoteDataSource,
 ) : RemoteConfigRepository {

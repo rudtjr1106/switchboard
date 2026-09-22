@@ -136,6 +136,21 @@ class AiManager(
         }
     }
 
+    /** 내려받은 모델 전체 크기. 연결 해제 확인 창에 보여준다 */
+    fun installedSizeBytes(): Long = ModelCatalog.all.filter(store::isInstalled).sumOf { it.sizeBytes }
+
+    /** 연결 해제할 때 모델을 모두 내리고 지운다 */
+    fun deleteAll() {
+        downloadJob?.cancel()
+        scope.launch {
+            engine.unload()
+            ModelCatalog.all.forEach { spec ->
+                store.delete(spec)
+                setStatus(spec, ModelStatus.NotInstalled)
+            }
+        }
+    }
+
     fun delete(spec: ModelSpec) {
         scope.launch {
             if ((engine.state.value as? EngineState.Ready)?.spec?.id == spec.id) engine.unload()

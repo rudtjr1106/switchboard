@@ -19,7 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -46,6 +46,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.rudtjr1106.switchboard.app.BuildInfo
+import io.github.rudtjr1106.switchboard.app.platform.AppPaths
 import io.github.rudtjr1106.switchboard.app.platform.DesktopActions
 import io.github.rudtjr1106.switchboard.app.session.SessionManager
 import io.github.rudtjr1106.switchboard.app.session.SessionState
@@ -87,7 +88,7 @@ private fun BrandPanel(modifier: Modifier) {
                 modifier = Modifier.size(72.dp),
             )
             Spacer(Modifier.height(24.dp))
-            Text("Switchboard", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+            Text(AppPaths.DISPLAY_NAME, color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
             Text(
                 "앱을 다시 배포하지 않고도 화면 안내와 점검 공지를 켜고 끕니다.\nGitHub 저장소 하나가 곧 원격 설정이에요.",
@@ -112,6 +113,7 @@ private fun SignedOutCard(session: SessionManager, state: SessionState.SignedOut
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
+    state.notice?.let { NoteBanner(it, NoteKind.SUCCESS) }
     state.error?.let { NoteBanner(it, NoteKind.ERROR) }
 
     if (hasClientId) {
@@ -169,7 +171,7 @@ private fun SigningInCard(state: SessionState.SigningIn, onCancel: () -> Unit) {
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { state.verificationUri?.let(DesktopActions::openUrl) }) {
-                Icon(Icons.Outlined.OpenInNew, null, Modifier.size(18.dp))
+                Icon(Icons.AutoMirrored.Outlined.OpenInNew, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("브라우저 열기")
             }

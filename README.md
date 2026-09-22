@@ -1,8 +1,10 @@
 <div align="center">
 
-<img src="app/src/main/resources/icon.png" width="96" alt="Switchboard">
+<img src="app/src/main/resources/icon.png" width="96" alt="스위치보드">
 
-# Switchboard
+# 스위치보드
+
+<sub>Switchboard</sub>
 
 **Android 원격 설정(remote config) 편집기 · macOS / Windows**
 
@@ -11,11 +13,11 @@
 </div>
 
 앱을 새로 배포하지 않고도 특정 화면에 안내 다이얼로그를 켜고 끄고, 점검 공지를 띄우고, 강제 업데이트 기준을 올립니다.
-설정은 GitHub 저장소의 `app-config.json` 하나이고, 앱은 GitHub Pages 로 서빙되는 그 파일을 읽습니다. Switchboard 는 그 저장소를 **폼으로 편집하고, PR → 검사 → 머지 → 배포**까지 대신 진행하는 데스크톱 앱입니다.
+설정은 GitHub 저장소의 `app-config.json` 하나이고, 앱은 GitHub Pages 로 서빙되는 그 파일을 읽습니다. 스위치보드는 그 저장소를 **폼으로 편집하고, PR → 검사 → 머지 → 배포**까지 대신 진행하는 데스크톱 앱입니다.
 
 [UMC-PRODUCT/umc-product-iOS-remote-config](https://github.com/UMC-PRODUCT/umc-product-iOS-remote-config) 의 macOS 편집 앱(UMC Launchpad)에서 착안했고, [umc-product-android-config](https://github.com/UMC-PRODUCT/umc-product-android-config) 와 같은 저장소 형식을 씁니다.
 
-![Switchboard 편집 화면. 왼쪽 사이드바에서 안내를 고르고 가운데 폼에서 값을 고치고 오른쪽 Android 미리보기로 모양을 확인합니다](docs/images/editor.png)
+![스위치보드 편집 화면. 왼쪽 사이드바에서 안내를 고르고 가운데 폼에서 값을 고치고 오른쪽 Android 미리보기로 모양을 확인합니다](docs/images/editor.png)
 
 | 로그인 | 적용 확인 (모든 화면 차단 경고) |
 |---|---|
@@ -35,7 +37,7 @@
 
 ## 설치
 
-1. [Releases](https://github.com/rudtjr1106/switchboard/releases/latest) 에서 `Switchboard.dmg`(macOS) 또는 `Switchboard.msi`(Windows)를 받습니다
+1. [Releases](https://github.com/rudtjr1106/switchboard/releases/latest) 에서 `Switchboard.dmg`(macOS) 또는 `Switchboard.msi`(Windows)를 받습니다. 설치하면 앱 이름은 **스위치보드**로 보입니다
 2. macOS: 열린 창에서 앱을 `Applications` 로 끌어다 놓습니다. Windows: MSI 를 실행합니다
 3. 처음 켜면 GitHub 로그인 화면이 나옵니다
 
@@ -49,14 +51,14 @@
 | gh CLI | `brew install gh` + `gh auth login`. 앱이 `gh auth token` 으로 토큰을 빌려 씁니다 |
 | Personal Access Token | `repo` · `workflow` · `read:org` 스코프 |
 
-브라우저 로그인은 GitHub OAuth App **Switchboard** 로 진행됩니다. Client ID 는 `gradle.properties` 의 `switchboard.githubClientId` 에 들어 있고 비밀값이 아닙니다.
+브라우저 로그인은 GitHub OAuth App 으로 진행됩니다. Client ID 는 `gradle.properties` 의 `switchboard.githubClientId` 에 들어 있고 비밀값이 아닙니다.
 
 - 조직이 서드파티 OAuth 앱 접근을 제한하면, 처음 로그인할 때 승인 화면의 조직 옆 **Request** 를 눌러 관리자 승인을 받아야 그 조직 저장소를 쓸 수 있습니다
 - 포크해서 자기 이름으로 배포하려면 OAuth App 을 새로 등록하고(Enable Device Flow 체크, Expire user access tokens 해제) Client ID 를 바꾸세요. 앱의 **설정 › GitHub OAuth App** 에서 실행 중에 바꿀 수도 있습니다
 
 ## 저장소 형식
 
-Switchboard 가 만드는(그리고 읽는) 설정 저장소는 아래 네 파일로 이뤄집니다.
+스위치보드가 만드는(그리고 읽는) 설정 저장소는 아래 네 파일로 이뤄집니다.
 
 | 파일 | 설명 |
 |---|---|
@@ -92,7 +94,7 @@ Kotlin 2.4 · Compose Multiplatform 1.12 (Desktop) · Gradle 9. JDK 는 툴체�
 ```sh
 ./gradlew :app:run            # 실행
 ./gradlew test                # 전체 테스트
-./gradlew :app:packageDmg     # macOS 설치 파일 (macOS 에서만)
+./gradlew :app:packageMacDmg  # macOS 설치 파일 (macOS 에서만, 앱 이름 스위치보드.app)
 ./gradlew :app:packageMsi     # Windows 설치 파일 (Windows 에서만)
 ```
 
@@ -103,6 +105,23 @@ Kotlin 2.4 · Compose Multiplatform 1.12 (Desktop) · Gradle 9. JDK 는 툴체�
 | `core/ai` | java-llama.cpp 엔진, 모델 내려받기, 문구·라벨·코드 적응 서비스 |
 | `core/scanner` | Android 프로젝트 스캔(Gradle 파일·내비게이션 목적지), 연동 코드 템플릿 |
 | `app` | Compose Desktop UI, 세션·워크스페이스·편집기 상태 |
+
+### 앱 이름
+
+보이는 이름은 **스위치보드**, 저장소·패키지·데이터 폴더(`~/Library/Application Support/Switchboard`)는 영문 `Switchboard` 입니다.
+
+- macOS `codesign` 은 실행 파일 이름이 한글이면 서명하지 못합니다. 그래서 실행 파일은 `Switchboard` 로 두고, `packageMacDmg` 가 서명된 번들을 `스위치보드.app` 폴더 이름으로 담습니다. 폴더 이름은 서명에 들어가지 않아 서명이 유지됩니다
+- 메뉴 막대·Dock 이름은 `dockName`(`-Xdock:name`), Windows 시작 메뉴·설치 폴더는 `packageName` 으로 정합니다
+
+### 브랜드 이미지
+
+`build-tools/draw-icon.swift` 가 정확한 픽셀 크기로 그립니다. GitHub 는 1MB 이하만 받습니다.
+
+| 파일 | 용도 |
+|---|---|
+| `docs/brand/switchboard-logo-512.png` | GitHub OAuth App 로고, 프로필·아바타 |
+| `docs/brand/switchboard-logo-1024.png` | 고해상도 원본 |
+| `docs/brand/switchboard-social-1280x640.png` | 저장소 Settings › Social preview |
 
 ### 화면 스크린샷
 

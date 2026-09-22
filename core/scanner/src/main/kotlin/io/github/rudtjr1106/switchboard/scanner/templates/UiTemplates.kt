@@ -22,7 +22,7 @@ internal object RemoteNoticeViewModelFile {
             ) + hiltImports,
             """
 /**
- * 원격 설정 저장소(${ctx.repoFullName})의 화면별 안내를 받아두고, 이미 닫은 안내를 기억한다. Switchboard 가 만든 파일이다
+ * 원격 설정 저장소(${ctx.repoFullName})의 화면별 안내를 받아두고, 이미 닫은 안내를 기억한다. 스위치보드가 만든 파일이다
  */
 ${annotation}class RemoteNoticeViewModel${ctx.injectConstructor}(
     private val getRemoteNoticesUseCase: GetRemoteNoticesUseCase,
@@ -108,7 +108,7 @@ internal object RemoteNoticeHostFile {
  * 원격 설정으로 켠 안내를 현재 화면 위에 띄운다
  *
  * 앱 최상단(MainActivity)에 하나만 두면 각 화면은 이 기능을 몰라도 된다.
- * 어느 화면에 무엇을 띄울지는 원격 설정 저장소(${ctx.repoFullName})의 app-config.json 이 정한다. Switchboard 가 만든 파일이다.
+ * 어느 화면에 무엇을 띄울지는 원격 설정 저장소(${ctx.repoFullName})의 app-config.json 이 정한다. 스위치보드가 만든 파일이다.
  *
  * 이용을 막는 안내([RemoteNoticeTemplate.BLOCKING])는 하단바까지 덮어야 하므로 Scaffold 바깥에 두어야 한다.
  *
@@ -196,7 +196,7 @@ internal object RemoteBlockingScreenFile {
  * 앱 이용을 막는 전용 화면
  *
  * 원격 설정 저장소(${ctx.repoFullName})의 BLOCKING 안내(점검 등)에 쓴다. 아래 화면을 조작할 수 없도록 모든 터치를 이 화면이 받아 삼키고
- * 뒤로 가기도 막는다. 사용자가 할 수 있는 건 앱 종료뿐이고, 운영진이 설정을 끄면 앱을 다시 열 때 사라진다. Switchboard 가 만든 파일이다.
+ * 뒤로 가기도 막는다. 사용자가 할 수 있는 건 앱 종료뿐이고, 운영진이 설정을 끄면 앱을 다시 열 때 사라진다. 스위치보드가 만든 파일이다.
  */
 @Composable
 fun RemoteBlockingScreen(

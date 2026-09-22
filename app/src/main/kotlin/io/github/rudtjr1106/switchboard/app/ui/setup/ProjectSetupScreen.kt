@@ -37,7 +37,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
@@ -53,6 +55,8 @@ import io.github.rudtjr1106.switchboard.app.session.SessionState
 import io.github.rudtjr1106.switchboard.app.setup.ProjectSetupModel
 import io.github.rudtjr1106.switchboard.app.setup.SetupStep
 import io.github.rudtjr1106.switchboard.app.ui.components.Caption
+import io.github.rudtjr1106.switchboard.app.ui.components.ConfirmDialog
+import io.github.rudtjr1106.switchboard.app.ui.components.PageScaffold
 import io.github.rudtjr1106.switchboard.app.ui.components.CodeBlock
 import io.github.rudtjr1106.switchboard.app.ui.components.KeyValueRow
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteBanner
@@ -67,34 +71,43 @@ import io.github.rudtjr1106.switchboard.scanner.FileAction
 import java.awt.Frame
 
 @Composable
-fun ProjectSetupDialog(container: AppContainer, session: SessionState.SignedIn, editor: EditorModel, window: Frame, onClose: () -> Unit) {
+fun ProjectSetupScreen(container: AppContainer, session: SessionState.SignedIn, editor: EditorModel, window: Frame, onBack: () -> Unit) {
     val model = remember(editor) { ProjectSetupModel(session, editor, container.scanner, container.generator, container.ai, container.settings, container.scope) }
     val step by model.state.collectAsState()
     val busy = step is SetupStep.Scanning || step is SetupStep.Running
+    // 스캔 결과나 라벨을 고친 뒤 나가면 처음부터 다시 해야 하므로 한 번 묻는다
+    val hasProgress = step is SetupStep.Review || step is SetupStep.Labeling || step is SetupStep.Plan
+    var confirmLeave by remember { mutableStateOf(false) }
+    val leave = { if (hasProgress) confirmLeave = true else onBack() }
 
-    Dialog(onDismissRequest = { if (!busy) onClose() }, properties = DialogProperties(dismissOnClickOutside = false, dismissOnBackPress = !busy)) {
-        Surface(shape = RoundedCornerShape(Dimens.radiusLarge), color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
-            Column(Modifier.width(960.dp).height(680.dp).padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Android 프로젝트 세팅", style = MaterialTheme.typography.titleLarge)
-                    Spacer(Modifier.width(12.dp))
-                    Caption(stepLabel(step))
-                    Spacer(Modifier.weight(1f))
-                    if (!busy) TextButton(onClick = onClose) { Text("닫기") }
-                }
-                HorizontalDivider()
-                Box(Modifier.weight(1f)) {
-                    when (val s = step) {
-                        is SetupStep.PickFolder -> PickFolder(model, s, window)
-                        is SetupStep.Scanning -> Centered("${s.path.fileName} 을 읽는 중…")
-                        is SetupStep.Review -> Review(model, s)
-                        is SetupStep.Labeling -> Labeling(container, model, s)
-                        is SetupStep.Plan -> Plan(model, s)
-                        is SetupStep.Running -> Running(s)
-                        is SetupStep.Done -> Done(model, s, onClose)
-                    }
-                }
+    PageScaffold(
+        title = "Android 프로젝트 세팅",
+        subtitle = stepLabel(step),
+        onBack = leave,
+        backEnabled = !busy,
+        backDisabledReason = "진행 중이에요. 끝날 때까지 기다려 주세요",
+    ) {
+        Box(Modifier.weight(1f).fillMaxWidth().padding(24.dp)) {
+            when (val s = step) {
+                is SetupStep.PickFolder -> PickFolder(model, s, window)
+                is SetupStep.Scanning -> Centered("${s.path.fileName} 을 읽는 중…")
+                is SetupStep.Review -> Review(model, s)
+                is SetupStep.Labeling -> Labeling(container, model, s)
+                is SetupStep.Plan -> Plan(model, s)
+                is SetupStep.Running -> Running(s)
+                is SetupStep.Done -> Done(model, s, onBack)
             }
+        }
+    }
+
+    if (confirmLeave) {
+        ConfirmDialog(
+            title = "세팅을 그만둘까요?",
+            confirmLabel = "그만두기",
+            onConfirm = { confirmLeave = false; onBack() },
+            onDismiss = { confirmLeave = false },
+        ) {
+            Text("스캔 결과와 고친 화면 이름이 사라져요. 프로젝트와 저장소에는 아직 아무것도 쓰지 않았어요.", style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

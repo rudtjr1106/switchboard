@@ -11,7 +11,8 @@ import io.github.rudtjr1106.switchboard.app.testing.FakeGitHubApi
 import io.github.rudtjr1106.switchboard.app.testing.UiFakes
 import io.github.rudtjr1106.switchboard.app.ui.editor.EditorScreen
 import io.github.rudtjr1106.switchboard.app.ui.login.LoginScreen
-import io.github.rudtjr1106.switchboard.app.ui.settings.SettingsDialog
+import io.github.rudtjr1106.switchboard.app.ui.settings.AccountDialog
+import io.github.rudtjr1106.switchboard.app.ui.settings.SettingsScreen
 import io.github.rudtjr1106.switchboard.app.ui.theme.SwitchboardTheme
 import io.github.rudtjr1106.switchboard.app.ui.workspace.RepoPickerScreen
 import io.github.rudtjr1106.switchboard.app.workspace.WorkspaceState
@@ -127,11 +128,28 @@ class ScreenshotTest {
     }
 
     @Test
-    fun `settings dialog`() = runTest {
+    fun `settings page and account dialogs`() = runTest {
         val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
         val api = FakeGitHubApi(user)
         val container = UiFakes.container(scope, api)
-        container.session.restore()
-        render("settings") { SettingsDialog(container, onClose = {}) }
+        container.session.signInWithToken("t")
+        render("settings") { SettingsScreen(container, onBack = {}) }
+        render("settings-logout") { SettingsScreen(container, onBack = {}, initialDialog = AccountDialog.LOGOUT) }
+        render("settings-disconnect") { SettingsScreen(container, onBack = {}, initialDialog = AccountDialog.DISCONNECT) }
+    }
+
+    @Test
+    fun `repo picker opened from the editor has a way back`() = runTest {
+        val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
+        val api = FakeGitHubApi(user)
+        val repo = FakeConfigRepository(umcRef, configText = Fixtures.androidConfigText, schemaText = Fixtures.androidSchemaText)
+        val container = UiFakes.container(scope, api) { repo }
+        val session = sessionFor(scope, api)
+        val editor = EditorModel(repo, scope) { LocalDate.of(2026, 9, 22) }
+        editor.load()
+        editor.addNotice()
+        val open = WorkspaceState.Open(editor, GitHubRepo(umcRef, umcRef.htmlUrl, permissions = RepoPermissions(push = true)))
+        val state = WorkspaceState.Browsing(owners = listOf(GitHubOwner(user.login, OwnerType.USER)), loading = false, returnTo = open)
+        render("repo-picker-back") { RepoPickerScreen(container, session, state, onOpenSettings = {}) }
     }
 }

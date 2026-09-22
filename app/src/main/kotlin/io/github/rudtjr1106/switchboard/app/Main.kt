@@ -23,6 +23,7 @@ import io.github.rudtjr1106.switchboard.app.platform.AppPaths
 import io.github.rudtjr1106.switchboard.app.platform.DesktopActions
 import io.github.rudtjr1106.switchboard.app.platform.OperatingSystem
 import io.github.rudtjr1106.switchboard.app.session.SessionState
+import io.github.rudtjr1106.switchboard.app.ui.AppPage
 import io.github.rudtjr1106.switchboard.app.ui.AppRoot
 import io.github.rudtjr1106.switchboard.app.ui.theme.SwitchboardTheme
 import io.github.rudtjr1106.switchboard.app.workspace.WorkspaceState
@@ -32,13 +33,12 @@ import java.awt.Toolkit
 fun main() {
     AppPaths.ensure()
     // macOS 메뉴 막대·Dock 이름. Info.plist 가 있는 배포본에서는 무시된다
-    System.setProperty("apple.awt.application.name", AppPaths.APP_NAME)
+    System.setProperty("apple.awt.application.name", AppPaths.DISPLAY_NAME)
     val container = createAppContainer()
 
     application {
         val windowState = rememberWindowState(size = DpSize(1120.dp, 720.dp), position = WindowPosition(Alignment.Center))
-        var showSettings by remember { mutableStateOf(false) }
-        var showSetup by remember { mutableStateOf(false) }
+        var page by remember { mutableStateOf<AppPage?>(null) }
         val workspace by container.workspace.state.collectAsState()
         val editor = (workspace as? WorkspaceState.Open)?.editor
         val editorState = editor?.state?.collectAsState()?.value
@@ -49,15 +49,15 @@ fun main() {
                 if (editorState?.isApplying == true) Toolkit.getDefaultToolkit().beep() else exitApplication()
             },
             state = windowState,
-            title = AppPaths.APP_NAME,
+            title = AppPaths.DISPLAY_NAME,
             icon = painterResource("icon.png"),
         ) {
             LaunchedEffect(Unit) { window.minimumSize = Dimension(940, 620) }
 
             val meta = AppPaths.os == OperatingSystem.MAC
             MenuBar {
-                Menu(AppPaths.APP_NAME, mnemonic = 'S') {
-                    Item("설정…", shortcut = KeyShortcut(Key.Comma, meta = meta, ctrl = !meta)) { showSettings = true }
+                Menu(AppPaths.DISPLAY_NAME, mnemonic = 'S') {
+                    Item("설정…", shortcut = KeyShortcut(Key.Comma, meta = meta, ctrl = !meta)) { page = AppPage.SETTINGS }
                     Item("업데이트 확인…") {
                         container.session.signedIn?.let { container.updater.check(it.api, userInitiated = true) }
                     }
@@ -72,24 +72,21 @@ fun main() {
                     Item("되돌리기", enabled = editorState?.hasChanges == true) { editor?.revert() }
                     Separator()
                     Item("GitHub 에서 열기", enabled = editor != null) { editor?.let { DesktopActions.openUrl(it.ref.htmlUrl) } }
-                    Item("다른 저장소 열기…", enabled = editor != null) {
-                        container.session.signedIn?.let { container.workspace.close(it) }
+                    Item("다른 저장소 열기…", enabled = editor != null && page == null) {
+                        container.session.signedIn?.let { container.workspace.switchRepository(it) }
                     }
                 }
+                Menu("보기", mnemonic = 'V') {
+                    // 페이지(설정·프로젝트 세팅)에서 나가기. 화면 왼쪽 위 뒤로가기, Esc 와 같다
+                    Item("뒤로", shortcut = KeyShortcut(Key.LeftBracket, meta = meta, ctrl = !meta), enabled = page != null) { page = null }
+                }
                 Menu("도구", mnemonic = 'T') {
-                    Item("Android 프로젝트 세팅…", enabled = editor != null) { showSetup = true }
+                    Item("Android 프로젝트 세팅…", enabled = editor != null) { page = AppPage.PROJECT_SETUP }
                 }
             }
 
             SwitchboardTheme {
-                AppRoot(
-                    container = container,
-                    showSettings = showSettings,
-                    onShowSettings = { showSettings = it },
-                    showSetup = showSetup,
-                    onShowSetup = { showSetup = it },
-                    window = window,
-                )
+                AppRoot(container = container, page = page, onPage = { page = it }, window = window)
             }
         }
     }

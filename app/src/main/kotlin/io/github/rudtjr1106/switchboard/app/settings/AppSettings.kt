@@ -38,6 +38,12 @@ class SettingsStore(private val file: Path) {
         save(_settings.value)
     }
 
+    /** 연결 해제할 때 설정 파일까지 지운다 */
+    fun reset() {
+        _settings.value = AppSettings()
+        runCatching { Files.deleteIfExists(file) }.onFailure { logger.warn(it) { "설정 파일을 지우지 못했어요" } }
+    }
+
     private fun load(): AppSettings = runCatching {
         if (Files.exists(file)) json.decodeFromString<AppSettings>(Files.readString(file)) else AppSettings()
     }.getOrElse {

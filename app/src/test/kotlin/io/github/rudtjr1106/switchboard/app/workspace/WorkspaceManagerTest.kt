@@ -20,6 +20,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WorkspaceManagerTest {
@@ -71,5 +72,34 @@ class WorkspaceManagerTest {
         val browsing = assertIs<WorkspaceState.Browsing>(workspace.state.value)
         assertEquals("octocat/not-a-config 은 설정 저장소가 아니에요. app-config.json 과 schema.json 이 있어야 해요.", browsing.openError)
         assertNull(settings.current.lastRepository)
+    }
+
+    @Test
+    fun `switching repositories keeps the editor so back restores unapplied edits`() = runTest {
+        val (workspace, session, _) = setUp(lastRepository = configRef)
+        workspace.start(session)
+        val open = assertIs<WorkspaceState.Open>(workspace.state.value)
+        open.editor.addNotice()
+        assertTrue(open.editor.current.hasChanges)
+
+        workspace.switchRepository(session)
+        val browsing = assertIs<WorkspaceState.Browsing>(workspace.state.value)
+        assertEquals(open, browsing.returnTo)
+        assertEquals(open.editor, workspace.editorInUse)
+
+        workspace.back()
+        val back = assertIs<WorkspaceState.Open>(workspace.state.value)
+        assertTrue(back.editor === open.editor)
+        assertTrue(back.editor.current.hasChanges)
+    }
+
+    @Test
+    fun `picking the repo that is already open goes straight back to it`() = runTest {
+        val (workspace, session, _) = setUp(lastRepository = configRef)
+        workspace.start(session)
+        val open = assertIs<WorkspaceState.Open>(workspace.state.value)
+        workspace.switchRepository(session)
+        workspace.open(session, configRef)
+        assertTrue(assertIs<WorkspaceState.Open>(workspace.state.value).editor === open.editor)
     }
 }

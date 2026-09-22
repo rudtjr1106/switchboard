@@ -19,7 +19,7 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            task: packageDmg
+            task: packageMacDmg
             glob: app/build/compose/binaries/main/dmg/*.dmg
           - os: windows-latest
             task: packageMsi

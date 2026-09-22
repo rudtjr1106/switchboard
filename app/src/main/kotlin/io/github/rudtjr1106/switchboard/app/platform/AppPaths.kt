@@ -9,7 +9,11 @@ enum class OperatingSystem { MAC, WINDOWS, LINUX }
 /** OS 별 앱 데이터 위치. 모델 파일·설정·토큰 폴백이 여기에 놓인다 */
 object AppPaths {
 
+    /** 데이터 폴더 이름. 이미 받은 모델·설정을 잃지 않도록 영문 그대로 둔다 */
     const val APP_NAME = "Switchboard"
+
+    /** 화면·메뉴·Dock 에 보이는 앱 이름 */
+    const val DISPLAY_NAME = "스위치보드"
 
     val os: OperatingSystem = System.getProperty("os.name").lowercase().let { name ->
         when {

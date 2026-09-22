@@ -231,7 +231,7 @@ class ProjectSetupModel(
                         val body = buildString {
                             append("### 화면 목록\n\n")
                             plan.screens.forEach { append("- `").append(it.id).append("` ").append(it.label).append(it.group?.let { g -> " ($g)" } ?: "").append('\n') }
-                            append("\n프로젝트 ").append(plan.project.name).append(" 을 스캔해 Switchboard 에서 적용")
+                            append("\n프로젝트 ").append(plan.project.name).append(" 을 스캔해 스위치보드에서 적용")
                         }
                         val result = editor.applyFiles(files, "원격 설정: 화면 목록 갱신 (${plan.screens.size - 1}개)", body) { progress ->
                             _state.value = SetupStep.Running(progress, "저장소에 화면 목록을 올리는 중…")

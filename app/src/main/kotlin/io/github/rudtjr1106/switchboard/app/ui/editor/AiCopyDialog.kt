@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import io.github.rudtjr1106.switchboard.ai.NoticeDraft
 import io.github.rudtjr1106.switchboard.app.di.AppContainer
+import io.github.rudtjr1106.switchboard.app.ui.components.DialogHeader
 import io.github.rudtjr1106.switchboard.app.ui.components.Caption
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteBanner
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteKind
@@ -84,7 +85,7 @@ fun AiCopyDialog(
     Dialog(onDismissRequest = { job?.cancel(); onClose() }) {
         Surface(shape = RoundedCornerShape(Dimens.radiusLarge), color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
             Column(Modifier.width(520.dp).padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text(if (mode == AiCopyMode.POLISH) "AI 로 다듬기" else "상황으로 초안 만들기", style = MaterialTheme.typography.titleLarge)
+                DialogHeader(if (mode == AiCopyMode.POLISH) "AI 로 다듬기" else "상황으로 초안 만들기", onClose = { job?.cancel(); onClose() })
                 Caption("모델은 이 컴퓨터에서만 돌아가요. 문구가 밖으로 나가지 않아요.")
                 if (mode == AiCopyMode.DRAFT) {
                     OutlinedTextField(

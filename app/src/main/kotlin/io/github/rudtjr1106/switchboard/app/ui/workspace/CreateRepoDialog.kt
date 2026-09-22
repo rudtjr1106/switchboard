@@ -15,7 +15,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -33,6 +33,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import io.github.rudtjr1106.switchboard.app.di.AppContainer
 import io.github.rudtjr1106.switchboard.app.session.SessionState
+import io.github.rudtjr1106.switchboard.app.ui.components.DialogHeader
 import io.github.rudtjr1106.switchboard.app.ui.components.Caption
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteBanner
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteKind
@@ -71,7 +72,7 @@ fun CreateRepoDialog(container: AppContainer, session: SessionState.SignedIn, ow
 @Composable
 private fun FormContent(flow: CreateRepoFlow, form: CreateRepoState.Form, owners: List<GitHubOwner>, onClose: () -> Unit) {
     var ownerMenu by remember { mutableStateOf(false) }
-    Text("새 설정 저장소", style = MaterialTheme.typography.titleLarge)
+    DialogHeader("새 설정 저장소", onClose = onClose)
     Caption("공개 저장소로 만들어요. GitHub Pages 가 공개 저장소에서만 무료라서 그래요. 비밀값은 절대 넣지 마세요.")
     form.error?.let { NoteBanner(it, NoteKind.ERROR) }
 
@@ -82,7 +83,7 @@ private fun FormContent(flow: CreateRepoFlow, form: CreateRepoState.Form, owners
             readOnly = true,
             label = { Text("소유자") },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(ownerMenu) },
-            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable),
+            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
         )
         DropdownMenu(expanded = ownerMenu, onDismissRequest = { ownerMenu = false }) {
             owners.forEach { owner ->
@@ -130,7 +131,7 @@ private fun ProgressContent(
     onClose: () -> Unit,
     actions: @Composable () -> Unit = {},
 ) {
-    Text(title, style = MaterialTheme.typography.titleLarge)
+    DialogHeader(title, onClose = onClose, closeEnabled = successMessage != null || errorMessage != null)
     Column {
         BootstrapStep.entries.forEachIndexed { index, step ->
             StepRow(step.title, stateOf(step), isLast = index == BootstrapStep.entries.lastIndex)

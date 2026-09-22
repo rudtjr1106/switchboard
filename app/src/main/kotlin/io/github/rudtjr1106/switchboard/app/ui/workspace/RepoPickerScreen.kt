@@ -44,12 +44,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.rudtjr1106.switchboard.app.di.AppContainer
 import io.github.rudtjr1106.switchboard.app.session.SessionState
+import io.github.rudtjr1106.switchboard.app.ui.components.BackButton
 import io.github.rudtjr1106.switchboard.app.ui.components.Caption
+import io.github.rudtjr1106.switchboard.app.ui.components.Hint
+import io.github.rudtjr1106.switchboard.app.ui.settings.LogoutDialog
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteBanner
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteKind
 import io.github.rudtjr1106.switchboard.app.ui.theme.Dimens
 import io.github.rudtjr1106.switchboard.app.update.AvailableUpdate
 import io.github.rudtjr1106.switchboard.app.update.UpdateChecker
+import io.github.rudtjr1106.switchboard.app.platform.AppPaths
 import io.github.rudtjr1106.switchboard.app.platform.DesktopActions
 import io.github.rudtjr1106.switchboard.app.workspace.WorkspaceState
 import io.github.rudtjr1106.switchboard.github.GitHubRepo
@@ -59,14 +63,25 @@ import io.github.rudtjr1106.switchboard.github.RepoRef
 fun RepoPickerScreen(container: AppContainer, session: SessionState.SignedIn, state: WorkspaceState.Browsing, onOpenSettings: () -> Unit) {
     var manual by remember { mutableStateOf("") }
     var showCreate by remember { mutableStateOf(false) }
+    var confirmLogout by remember { mutableStateOf(false) }
+    val returnTo = state.returnTo
 
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("설정 저장소 고르기", style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.weight(1f))
+        Row(
+            Modifier.fillMaxWidth().padding(start = if (returnTo != null) 8.dp else 24.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            if (returnTo != null) {
+                BackButton(onBack = container.workspace::back, label = "${returnTo.editor.ref.name} 로 돌아가기")
+            }
+            Column(Modifier.weight(1f)) {
+                Text("설정 저장소 고르기", style = MaterialTheme.typography.titleLarge)
+                if (returnTo != null) Caption("지금 연 저장소: ${returnTo.editor.ref.fullName}")
+            }
             Text("@${session.user.login}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            IconButton(onClick = onOpenSettings) { Icon(Icons.Outlined.Settings, "설정") }
-            IconButton(onClick = container.session::signOut) { Icon(Icons.AutoMirrored.Outlined.Logout, "로그아웃") }
+            Hint("설정") { IconButton(onClick = onOpenSettings) { Icon(Icons.Outlined.Settings, "설정") } }
+            Hint("로그아웃") { IconButton(onClick = { confirmLogout = true }) { Icon(Icons.AutoMirrored.Outlined.Logout, "로그아웃") } }
         }
         HorizontalDivider()
         Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {
@@ -75,6 +90,9 @@ fun RepoPickerScreen(container: AppContainer, session: SessionState.SignedIn, st
                     NoteBanner("토큰에 ${it.joinToString(", ")} 스코프가 없어요. 저장소 생성이나 워크플로 파일 커밋이 막힐 수 있어요.", NoteKind.WARNING)
                 }
                 state.openError?.let { NoteBanner(it, NoteKind.ERROR) }
+                if (returnTo != null && returnTo.editor.state.value.hasChanges) {
+                    NoteBanner("${returnTo.editor.ref.name} 에 적용하지 않은 변경 사항이 있어요. 다른 저장소를 열면 사라지고, 뒤로가기로 돌아가면 그대로 남아 있어요.", NoteKind.WARNING)
+                }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("내 설정 저장소", style = MaterialTheme.typography.titleMedium)
@@ -131,6 +149,9 @@ fun RepoPickerScreen(container: AppContainer, session: SessionState.SignedIn, st
     if (showCreate) {
         CreateRepoDialog(container, session, state.owners, onClose = { showCreate = false })
     }
+    if (confirmLogout) {
+        LogoutDialog(container, session, onDone = { confirmLogout = false }, onDismiss = { confirmLogout = false })
+    }
 }
 
 @Composable
@@ -157,7 +178,7 @@ private fun RepoRow(repo: GitHubRepo, onOpen: () -> Unit) {
 fun UpdateBanner(update: AvailableUpdate, updater: UpdateChecker) {
     Surface(color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Switchboard ${update.version} 이 나왔어요.", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            Text("${AppPaths.DISPLAY_NAME} ${update.version} 버전이 나왔어요.", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
             TextButton(onClick = { updater.skip(update) }) { Text("이 버전 건너뛰기") }
             TextButton(onClick = { DesktopActions.openUrl(update.release.htmlUrl) }) { Text("릴리즈 노트") }
             Button(onClick = { DesktopActions.openUrl(update.downloadUrl); updater.dismiss() }) { Text("내려받기") }

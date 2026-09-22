@@ -10,7 +10,7 @@ internal object RemoteNoticeFile {
  * 원격 설정 저장소(${ctx.repoFullName})에서 받은 화면별 안내
  *
  * 앱을 새로 배포하지 않고 특정 화면에 안내 다이얼로그를 켜고 끄는 데 쓴다.
- * 값의 규칙은 그 저장소의 schema.json 이 기준이다. Switchboard 가 만든 파일이다.
+ * 값의 규칙은 그 저장소의 schema.json 이 기준이다. 스위치보드가 만든 파일이다.
  *
  * @property screen 띄울 화면. 앱 경로 이름 그대로다. 예: `${ctx.exampleScreen}`. [ALL_SCREENS] 이면 모든 화면
  * @property until 이 날짜(포함)까지만 띄운다. `YYYY-MM-DD` 형식이고, 없으면 기한이 없다
@@ -72,7 +72,7 @@ internal object RemoteConfigRepositoryFile {
         ctx.repositoryPackage,
         listOf("${ctx.modelPackage}.RemoteNotice"),
         """
-/** 원격 설정 저장소(${ctx.repoFullName})의 화면별 안내. Switchboard 가 만든 파일이다 */
+/** 원격 설정 저장소(${ctx.repoFullName})의 화면별 안내. 스위치보드가 만든 파일이다 */
 interface RemoteConfigRepository {
 
     // 원격 설정의 화면별 안내 목록. 받아오지 못하면 실패를 돌려주고 예외는 던지지 않는다
@@ -87,7 +87,7 @@ internal object GetRemoteNoticesUseCaseFile {
         ctx.useCasePackage,
         listOf("${ctx.modelPackage}.RemoteNotice", "${ctx.repositoryPackage}.RemoteConfigRepository") + ctx.injectImports,
         """
-/** 원격 설정(${ctx.repoFullName})의 화면별 안내 목록을 가져온다. Switchboard 가 만든 파일이다 */
+/** 원격 설정(${ctx.repoFullName})의 화면별 안내 목록을 가져온다. 스위치보드가 만든 파일이다 */
 class GetRemoteNoticesUseCase${ctx.injectConstructor}(
     private val remoteConfigRepository: RemoteConfigRepository,
 ) {

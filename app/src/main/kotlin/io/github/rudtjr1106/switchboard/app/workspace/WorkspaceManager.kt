@@ -13,6 +13,7 @@ import io.github.rudtjr1106.switchboard.github.GitHubRepo
 import io.github.rudtjr1106.switchboard.github.OwnerType
 import io.github.rudtjr1106.switchboard.github.RepoRef
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,16 +27,21 @@ private val logger = KotlinLogging.logger {}
 sealed interface WorkspaceState {
     data object Idle : WorkspaceState
 
-    /** 저장소 고르기 화면 */
+    /**
+     * 저장소 고르기 화면
+     *
+     * @property returnTo 편집기에서 '바꾸기' 로 왔으면 그 편집기. 뒤로가기로 고치던 값 그대로 돌아간다
+     */
     data class Browsing(
         val repos: List<GitHubRepo> = emptyList(),
         val owners: List<GitHubOwner> = emptyList(),
         val loading: Boolean = true,
         val error: String? = null,
         val openError: String? = null,
+        val returnTo: Open? = null,
     ) : WorkspaceState
 
-    data class Opening(val ref: RepoRef) : WorkspaceState
+    data class Opening(val ref: RepoRef, val returnTo: Open? = null) : WorkspaceState
 
     data class Open(val editor: EditorModel, val repo: GitHubRepo) : WorkspaceState
 }
@@ -49,7 +55,19 @@ class WorkspaceManager(
     private val _state = MutableStateFlow<WorkspaceState>(WorkspaceState.Idle)
     val state: StateFlow<WorkspaceState> = _state.asStateFlow()
 
+    private var browseJob: Job? = null
+    private var openJob: Job? = null
+
     val activeEditor: EditorModel? get() = (_state.value as? WorkspaceState.Open)?.editor
+
+    /** 화면에 보이든 저장소 고르기 뒤에 숨어 있든, 아직 살아 있는 편집기 */
+    val editorInUse: EditorModel?
+        get() = when (val s = _state.value) {
+            is WorkspaceState.Open -> s.editor
+            is WorkspaceState.Browsing -> s.returnTo?.editor
+            is WorkspaceState.Opening -> s.returnTo?.editor
+            WorkspaceState.Idle -> null
+        }
 
     /** 로그인 직후. 마지막에 열었던 저장소가 있으면 바로 연다 */
     fun start(session: SessionState.SignedIn) {
@@ -58,22 +76,48 @@ class WorkspaceManager(
         if (last != null) open(session, last) else browse(session)
     }
 
-    fun browse(session: SessionState.SignedIn) {
-        _state.value = WorkspaceState.Browsing()
-        scope.launch {
+    fun browse(session: SessionState.SignedIn, returnTo: WorkspaceState.Open? = null, openError: String? = null) {
+        browseJob?.cancel()
+        _state.value = WorkspaceState.Browsing(returnTo = returnTo, openError = openError)
+        browseJob = scope.launch {
             try {
                 val (owners, repos) = loadRepos(session)
-                _state.update { (it as? WorkspaceState.Browsing ?: WorkspaceState.Browsing()).copy(repos = repos, owners = owners, loading = false, error = null) }
+                updateBrowsing { it.copy(repos = repos, owners = owners, loading = false, error = null) }
             } catch (e: GitHubException) {
                 logger.warn(e) { "저장소 목록 실패" }
-                _state.update { (it as? WorkspaceState.Browsing ?: WorkspaceState.Browsing()).copy(loading = false, error = e.message) }
+                updateBrowsing { it.copy(loading = false, error = e.message) }
             }
         }
     }
 
+    /** 편집기에서 다른 저장소로 바꾸러 간다. 지금 편집기는 [back] 으로 돌아올 수 있게 남겨 둔다 */
+    fun switchRepository(session: SessionState.SignedIn) {
+        browse(session, returnTo = _state.value as? WorkspaceState.Open)
+    }
+
+    /** 저장소 고르기에서 원래 편집기로 돌아간다 */
+    fun back() {
+        val returnTo = (_state.value as? WorkspaceState.Browsing)?.returnTo ?: return
+        browseJob?.cancel()
+        _state.value = returnTo
+    }
+
     fun open(session: SessionState.SignedIn, ref: RepoRef) {
-        _state.value = WorkspaceState.Opening(ref)
-        scope.launch {
+        val previous = _state.value
+        val returnTo = when (previous) {
+            is WorkspaceState.Browsing -> previous.returnTo
+            is WorkspaceState.Open -> previous
+            else -> null
+        }
+        // 이미 열려 있는 저장소를 다시 고르면 고치던 값을 버리지 않고 그대로 돌아간다
+        if (returnTo != null && returnTo.editor.ref == ref) {
+            _state.value = returnTo
+            return
+        }
+        browseJob?.cancel()
+        openJob?.cancel()
+        _state.value = WorkspaceState.Opening(ref, returnTo)
+        openJob = scope.launch {
             try {
                 val repo = session.api.repository(ref)
                 val repository = clientFactory.configRepository(session.api, ref, repo.defaultBranch)
@@ -90,21 +134,28 @@ class WorkspaceManager(
                 }
                 logger.warn(e) { "저장소 열기 실패: ${ref.fullName}" }
                 settings.update { if (it.lastRepository == ref) it.copy(lastRepository = null) else it }
-                browse(session)
-                _state.update { (it as? WorkspaceState.Browsing)?.copy(openError = message) ?: it }
+                browse(session, returnTo = returnTo, openError = message)
             }
         }
     }
 
     fun opened(session: SessionState.SignedIn, repo: GitHubRepo) = open(session, repo.ref)
 
-    fun close(session: SessionState.SignedIn) {
-        settings.update { it.copy(lastRepository = null) }
-        browse(session)
+    /** 여는 중에 취소하면 저장소 고르기(또는 원래 편집기)로 돌아간다 */
+    fun cancelOpening(session: SessionState.SignedIn) {
+        val opening = _state.value as? WorkspaceState.Opening ?: return
+        openJob?.cancel()
+        browse(session, returnTo = opening.returnTo)
     }
 
     fun reset() {
+        browseJob?.cancel()
+        openJob?.cancel()
         _state.value = WorkspaceState.Idle
+    }
+
+    private fun updateBrowsing(transform: (WorkspaceState.Browsing) -> WorkspaceState.Browsing) {
+        _state.update { (it as? WorkspaceState.Browsing)?.let(transform) ?: it }
     }
 
     private suspend fun loadRepos(session: SessionState.SignedIn): Pair<List<GitHubOwner>, List<GitHubRepo>> = coroutineScope {

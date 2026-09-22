@@ -19,6 +19,8 @@ kotlin {
 }
 
 val appVersion: String = providers.gradleProperty("switchboard.version").get()
+val displayName = "스위치보드"
+val isWindows = System.getProperty("os.name").lowercase().contains("win")
 val githubClientId: String = providers.gradleProperty("switchboard.githubClientId").orElse("").get()
 
 // 빌드 시점 상수를 코드로 만든다 (Android 의 BuildConfig 와 같은 역할)
@@ -91,13 +93,14 @@ compose.desktop {
 
         jvmArgs += listOf(
             "-Xmx2g",
-            "-Dapple.awt.application.name=Switchboard",
             "-Dapple.awt.application.appearance=system",
         )
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi)
-            packageName = "Switchboard"
+            // 실행 파일 이름. macOS codesign 은 실행 파일 이름이 한글이면 서명하지 못해서 영문으로 두고,
+            // 보이는 이름(스위치보드)은 macOS 는 번들 폴더 이름(packageMacDmg)과 dockName, Windows 는 시작 메뉴 이름으로 준다
+            packageName = if (isWindows) displayName else "Switchboard"
             packageVersion = appVersion
             description = "Android 원격 설정(remote config) 편집기"
             vendor = "rudtjr1106"
@@ -109,7 +112,8 @@ compose.desktop {
 
             macOS {
                 bundleID = "io.github.rudtjr1106.switchboard"
-                dockName = "Switchboard"
+                // 메뉴 막대·앱 전환기(CFBundleName)에 보이는 이름
+                dockName = displayName
                 iconFile.set(project.file("icons/switchboard.icns"))
                 infoPlist {
                     extraKeysRawXml = """
@@ -117,12 +121,14 @@ compose.desktop {
                         <string>public.app-category.developer-tools</string>
                         <key>CFBundleDevelopmentRegion</key>
                         <string>ko</string>
+                        <key>CFBundleDisplayName</key>
+                        <string>$displayName</string>
                     """.trimIndent()
                 }
             }
             windows {
                 iconFile.set(project.file("icons/switchboard.ico"))
-                menuGroup = "Switchboard"
+                menuGroup = displayName
                 perUserInstall = true
                 shortcut = true
                 dirChooser = false
@@ -130,5 +136,37 @@ compose.desktop {
                 upgradeUuid = "4f3d3b7a-6c2e-4d8b-9e1a-2b7f0c9d5e11"
             }
         }
+    }
+}
+
+/**
+ * macOS 설치 파일. 서명된 Switchboard.app 을 `스위치보드.app` 폴더 이름으로 담는다
+ *
+ * codesign 은 실행 파일 이름이 한글이면 서명하지 못하지만, 번들 폴더 이름은 서명에 들어가지 않아 바꿔도 서명이 유지된다.
+ * Finder·Dock·Launchpad 는 폴더 이름을 보여주므로 사용자에게는 '스위치보드' 로 보인다.
+ */
+val packageMacDmg by tasks.registering {
+    group = "compose desktop"
+    description = "macOS DMG (앱 이름: $displayName)"
+    dependsOn("createDistributable")
+    val appDir = layout.buildDirectory.dir("compose/binaries/main/app")
+    val stageDir = layout.buildDirectory.dir("mac-dmg/stage")
+    val dmgFile = layout.buildDirectory.file("compose/binaries/main/dmg/$displayName-$appVersion.dmg")
+    onlyIf { System.getProperty("os.name").lowercase().contains("mac") }
+    outputs.file(dmgFile)
+    doLast {
+        fun run(vararg command: String) {
+            val process = ProcessBuilder(*command).inheritIO().start()
+            check(process.waitFor() == 0) { "${command.first()} 실패: ${command.joinToString(" ")}" }
+        }
+        val stage = stageDir.get().asFile.apply { deleteRecursively(); mkdirs() }
+        val dmg = dmgFile.get().asFile.apply { parentFile.mkdirs(); delete() }
+        val bundle = stage.resolve("$displayName.app")
+        // ditto 는 확장 속성과 서명을 그대로 옮긴다
+        run("ditto", appDir.get().asFile.resolve("Switchboard.app").absolutePath, bundle.absolutePath)
+        run("codesign", "--verify", "--strict", bundle.absolutePath)
+        run("ln", "-s", "/Applications", stage.resolve("Applications").absolutePath)
+        run("hdiutil", "create", "-volname", displayName, "-srcfolder", stage.absolutePath, "-format", "UDZO", "-ov", dmg.absolutePath)
+        logger.lifecycle("완료: ${dmg.absolutePath}")
     }
 }

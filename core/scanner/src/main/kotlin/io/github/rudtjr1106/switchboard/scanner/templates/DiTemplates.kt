@@ -133,7 +133,7 @@ annotation class $qualifier
 /**
  * 원격 설정 저장소(${ctx.repoFullName}) 네트워크 구성
  *
- * 기존 DI 모듈을 고치지 않아도 되도록 필요한 것을 모두 여기서 제공한다. Switchboard 가 만든 파일이다.
+ * 기존 DI 모듈을 고치지 않아도 되도록 필요한 것을 모두 여기서 제공한다. 스위치보드가 만든 파일이다.
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -182,7 +182,7 @@ internal object HiltRemoteConfigBindModuleFile {
             "javax.inject.Singleton",
         ),
         """
-/** 원격 설정 저장소(${ctx.repoFullName}) 연동의 구현 바인딩. 기존 RepositoryModule 등은 건드리지 않는다. Switchboard 가 만든 파일이다 */
+/** 원격 설정 저장소(${ctx.repoFullName}) 연동의 구현 바인딩. 기존 RepositoryModule 등은 건드리지 않는다. 스위치보드가 만든 파일이다 */
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RemoteConfigBindModule {
@@ -223,7 +223,7 @@ internal object KoinRemoteConfigModuleFile {
 /**
  * 원격 설정 저장소(${ctx.repoFullName}) 연동 Koin 모듈
  *
- * `startKoin { androidContext(this); modules(remoteConfigModule) }` 처럼 등록하면 된다. Switchboard 가 만든 파일이다.
+ * `startKoin { androidContext(this); modules(remoteConfigModule) }` 처럼 등록하면 된다. 스위치보드가 만든 파일이다.
  */
 val remoteConfigModule = module {
     // 설정 파일 전용 클라이언트. API 서버용을 쓰면 인증 토큰이 GitHub 으로 함께 나가므로 따로 두고,
@@ -270,7 +270,7 @@ internal object RemoteConfigContainerFile {
 /**
  * 원격 설정 저장소(${ctx.repoFullName}) 연동 조립. DI 프레임워크가 없어 여기서 직접 만든다
  *
- * 처음 부를 때 한 번 만들고 앱이 살아 있는 동안 같은 것을 돌려준다. Switchboard 가 만든 파일이다.
+ * 처음 부를 때 한 번 만들고 앱이 살아 있는 동안 같은 것을 돌려준다. 스위치보드가 만든 파일이다.
  */
 object RemoteConfigContainer {
 
