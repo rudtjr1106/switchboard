@@ -35,10 +35,9 @@ class SessionManagerTest {
         clientId: String? = "client-123",
     ): Pair<SessionManager, FakeClientFactory> {
         val settings = SettingsStore(Files.createTempDirectory("switchboard-test").resolve("settings.json"))
-        settings.update { it.copy(githubClientId = clientId) }
         val factory = FakeClientFactory(api) { error("unused") }
         val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
-        return SessionManager(tokenStore, ghCli, deviceFlow, factory, settings, scope, defaultClientId = "") to factory
+        return SessionManager(tokenStore, ghCli, deviceFlow, factory, settings, scope, defaultClientId = clientId.orEmpty()) to factory
     }
 
     @Test
@@ -86,7 +85,7 @@ class SessionManagerTest {
         manager.restore()
         manager.signInWithDeviceFlow()
         val out = assertIs<SessionState.SignedOut>(manager.state.value)
-        assertEquals("GitHub OAuth App 의 Client ID 가 없어요. 설정에서 넣어 주세요.", out.error)
+        assertEquals("이 빌드에는 GitHub 로그인 설정(Client ID)이 없어요.", out.error)
     }
 
     @Test

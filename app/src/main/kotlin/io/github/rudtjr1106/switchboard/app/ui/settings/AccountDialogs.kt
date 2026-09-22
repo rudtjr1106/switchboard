@@ -90,7 +90,7 @@ fun DisconnectDialog(container: AppContainer, session: SessionState.SignedIn, on
             style = MaterialTheme.typography.bodyMedium,
         )
         BulletLine("이 컴퓨터에 저장된 로그인 정보를 지워요.")
-        BulletLine("최근 연 저장소, OAuth Client ID, 모델 선택 같은 ${AppPaths.DISPLAY_NAME} 설정을 지워요.")
+        BulletLine("최근 연 저장소, 모델 선택 같은 ${AppPaths.DISPLAY_NAME} 설정을 지워요.")
         when {
             revokeUrl != null && session.token.source == TokenSource.DEVICE_FLOW ->
                 BulletLine("GitHub 의 '승인된 OAuth 앱' 페이지를 열어 드려요. 거기서 Revoke 를 눌러야 GitHub 쪽 권한까지 없어져요.")

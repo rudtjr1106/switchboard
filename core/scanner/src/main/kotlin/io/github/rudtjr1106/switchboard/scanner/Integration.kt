@@ -21,6 +21,8 @@ data class GeneratedFile(
     val content: String,
     val action: FileAction,
     val original: String? = null,
+    /** 템플릿을 온디바이스 AI 가 프로젝트에 맞게 고쳐 쓴 파일 */
+    val adaptedByAi: Boolean = false,
 )
 
 data class IntegrationPlan(

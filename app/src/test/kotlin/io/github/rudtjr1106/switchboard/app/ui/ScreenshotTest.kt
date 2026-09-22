@@ -74,7 +74,6 @@ class ScreenshotTest {
     fun `login screens`() = runTest {
         val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
         val container = UiFakes.container(scope, FakeGitHubApi(user))
-        container.settings.update { it.copy(githubClientId = "Ov23liExample") }
         val manager: SessionManager = container.session
         render("login") { LoginScreen(manager, SessionState.SignedOut(ghCliAvailable = true), onOpenSettings = {}) }
         render("login-device-code") {

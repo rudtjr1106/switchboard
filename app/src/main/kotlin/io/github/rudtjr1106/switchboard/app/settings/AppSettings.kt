@@ -16,8 +16,6 @@ private val logger = KotlinLogging.logger {}
 @Serializable
 data class AppSettings(
     val lastRepository: RepoRef? = null,
-    /** 설정 화면에서 넣은 OAuth App Client ID. 비어 있으면 빌드에 넣은 값을 쓴다 */
-    val githubClientId: String? = null,
     val modelId: String? = null,
     val aiEnabled: Boolean = true,
     val lastProjectPath: String? = null,

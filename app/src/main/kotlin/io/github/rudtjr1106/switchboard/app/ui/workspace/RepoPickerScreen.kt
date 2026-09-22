@@ -130,7 +130,7 @@ fun RepoPickerScreen(container: AppContainer, session: SessionState.SignedIn, st
 
                 HorizontalDivider()
                 Text("주소로 열기", style = MaterialTheme.typography.titleMedium)
-                Caption("이 앱으로 만들지 않은 저장소(예: UMC-PRODUCT/umc-product-android-config)도 app-config.json 과 schema.json 만 있으면 열 수 있어요.")
+                Caption("이 앱으로 만들지 않은 저장소도 app-config.json 과 schema.json 만 있으면 열 수 있어요.")
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = manual,

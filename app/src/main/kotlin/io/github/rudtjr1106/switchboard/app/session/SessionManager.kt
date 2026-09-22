@@ -65,9 +65,9 @@ class SessionManager(
 
     private var signInJob: Job? = null
 
-    /** 설정 > Client ID 가 우선, 없으면 빌드에 넣은 값. 둘 다 없으면 Device Flow 를 쓸 수 없다 */
+    /** 빌드에 넣은 OAuth App Client ID. 없으면 Device Flow 를 쓸 수 없다 */
     val clientId: String?
-        get() = settings.current.githubClientId?.takeIf { it.isNotBlank() } ?: defaultClientId.takeIf { it.isNotBlank() }
+        get() = defaultClientId.takeIf { it.isNotBlank() }
 
     val signedIn: SessionState.SignedIn? get() = _state.value as? SessionState.SignedIn
 
@@ -95,7 +95,7 @@ class SessionManager(
 
     fun signInWithDeviceFlow() {
         val clientId = clientId ?: run {
-            _state.value = SessionState.SignedOut("GitHub OAuth App 의 Client ID 가 없어요. 설정에서 넣어 주세요.", ghCliAvailableCached())
+            _state.value = SessionState.SignedOut("이 빌드에는 GitHub 로그인 설정(Client ID)이 없어요.", ghCliAvailableCached())
             return
         }
         signInJob?.cancel()

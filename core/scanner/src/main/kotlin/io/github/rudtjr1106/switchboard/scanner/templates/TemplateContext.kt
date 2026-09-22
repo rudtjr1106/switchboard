@@ -46,10 +46,13 @@ internal data class TemplateContext(
 ) {
     val isHilt: Boolean get() = di == DiFramework.HILT
 
-    /** Hilt 면 ` @Inject constructor`, 아니면 빈 문자열. 클래스 이름 바로 뒤에 붙인다 */
-    val injectConstructor: String get() = if (isHilt) " @Inject constructor" else ""
+    /** 생성자 주입을 쓰는 DI (Hilt, Dagger) */
+    val usesInject: Boolean get() = di == DiFramework.HILT || di == DiFramework.DAGGER
 
-    val injectImports: List<String> get() = if (isHilt) listOf("javax.inject.Inject") else emptyList()
+    /** Hilt·Dagger 면 ` @Inject constructor`, 아니면 빈 문자열. 클래스 이름 바로 뒤에 붙인다 */
+    val injectConstructor: String get() = if (usesInject) " @Inject constructor" else ""
+
+    val injectImports: List<String> get() = if (usesInject) listOf("javax.inject.Inject") else emptyList()
 
     val isRetrofit: Boolean get() = http != HttpStack.KTOR
 

@@ -2,11 +2,13 @@ package io.github.rudtjr1106.switchboard.scanner
 
 import java.nio.file.Path
 
-enum class DiFramework { HILT, KOIN, NONE }
+/** [DAGGER] 는 Hilt 없이 Dagger 만 쓰는 경우. 컴포넌트 연결은 사람이 한다 */
+enum class DiFramework { HILT, KOIN, DAGGER, NONE }
 
 enum class HttpStack { RETROFIT_GSON, RETROFIT_KOTLINX, RETROFIT_MOSHI, KTOR, NONE }
 
-enum class NavigationStyle { NAVIGATION_COMPOSE_TYPESAFE, NAVIGATION3, STRING_ROUTES, UNKNOWN }
+/** [XML_GRAPH] 는 `res/navigation` 폴더의 XML 그래프 (Fragment 기반) */
+enum class NavigationStyle { NAVIGATION_COMPOSE_TYPESAFE, NAVIGATION3, STRING_ROUTES, XML_GRAPH, UNKNOWN }
 
 data class GradleModule(
     /** `:presentation:home` */

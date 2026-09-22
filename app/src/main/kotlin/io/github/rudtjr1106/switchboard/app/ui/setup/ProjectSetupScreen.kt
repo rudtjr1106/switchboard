@@ -29,6 +29,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import io.github.rudtjr1106.switchboard.app.setup.PlanningProgress
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -74,7 +76,7 @@ import java.awt.Frame
 fun ProjectSetupScreen(container: AppContainer, session: SessionState.SignedIn, editor: EditorModel, window: Frame, onBack: () -> Unit) {
     val model = remember(editor) { ProjectSetupModel(session, editor, container.scanner, container.generator, container.ai, container.settings, container.scope) }
     val step by model.state.collectAsState()
-    val busy = step is SetupStep.Scanning || step is SetupStep.Running
+    val busy = step is SetupStep.Scanning || step is SetupStep.Running || (step as? SetupStep.Labeling)?.planning != null
     // 스캔 결과나 라벨을 고친 뒤 나가면 처음부터 다시 해야 하므로 한 번 묻는다
     val hasProgress = step is SetupStep.Review || step is SetupStep.Labeling || step is SetupStep.Plan
     var confirmLeave by remember { mutableStateOf(false) }
@@ -245,7 +247,30 @@ private fun Labeling(container: AppContainer, model: ProjectSetupModel, step: Se
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             TextButton(onClick = model::backToReview) { Text("이전") }
             Spacer(Modifier.width(8.dp))
-            Button(onClick = model::buildPlan, enabled = !step.aiRunning) { Text("계획 만들기") }
+            Button(onClick = model::buildPlan, enabled = !step.aiRunning && step.planning == null) { Text("계획 만들기") }
+        }
+    }
+    step.planning?.let { PlanningDialog(it, onCancel = model::cancelPlanning) }
+}
+
+/** 계획을 만드는 동안 띄우는 로딩 창. AI 가 파일을 고칠 때는 몇 번째 파일인지 보여준다 */
+@Composable
+private fun PlanningDialog(progress: PlanningProgress, onCancel: () -> Unit) {
+    Dialog(onDismissRequest = {}, properties = DialogProperties(dismissOnClickOutside = false, dismissOnBackPress = false)) {
+        Surface(shape = RoundedCornerShape(Dimens.radiusLarge), color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
+            Column(Modifier.width(420.dp).padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text("계획 만드는 중", style = MaterialTheme.typography.titleLarge)
+                Text(progress.message, style = MaterialTheme.typography.bodyMedium)
+                if (progress.total > 0) {
+                    LinearProgressIndicator(progress = { progress.done.toFloat() / progress.total }, modifier = Modifier.fillMaxWidth())
+                    Caption("${progress.done}/${progress.total} · 파일 하나에 30초쯤 걸려요. 모델은 이 컴퓨터에서만 돌아요")
+                } else {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onCancel) { Text("취소") }
+                }
+            }
         }
     }
 }
@@ -266,6 +291,9 @@ private fun Plan(model: ProjectSetupModel, step: SetupStep.Plan) {
                                 .padding(vertical = 6.dp, horizontal = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            if (file.adaptedByAi) {
+                                Text("AI", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.width(22.dp))
+                            }
                             Text(
                                 if (file.action == FileAction.MODIFY) "수정" else "새로",
                                 style = MaterialTheme.typography.labelSmall,

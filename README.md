@@ -32,7 +32,7 @@
 | **폼 편집 + Android 미리보기** | 화면·모양·문구·종료일을 폼으로 고치고 오른쪽 폰 미리보기로 확인. 글자 수 초과, 잘못된 날짜, 스키마에 없는 화면은 입력 즉시 표시됩니다 |
 | **안전한 적용** | 충돌 확인 → 브랜치 → 커밋 → PR → `validate` 검사 → 스쿼시 머지 → Pages 배포 확인. 머지 전에 실패하면 PR 과 브랜치를 정리합니다. 모든 화면을 막는 차단 안내는 빨간 경고와 함께 별도 버튼으로만 켜집니다 |
 | **스키마 기반** | 화면 목록·글자 수 제한·`minimumVersion` 지원 여부를 저장소의 `schema.json` 에서 읽습니다. 저장소마다 규칙이 달라도 앱을 고칠 필요가 없습니다 |
-| **Android 프로젝트 세팅** | 로컬 Android 프로젝트를 스캔해 내비게이션 목적지·DI·HTTP 라이브러리를 알아내고, 그 프로젝트 관례에 맞는 연동 코드(Retrofit API, Repository, Hilt/Koin 모듈, `RemoteNoticeHost`)를 만들어 줍니다. 스캔한 화면 목록은 저장소 `schema.json` 에 PR 로 반영합니다 |
+| **Android 프로젝트 세팅** | 로컬 Android 프로젝트를 AI 없이 스캔해 내비게이션 목적지(타입 세이프·Navigation 3·문자열 route·XML 그래프), DI(Hilt·Koin·Dagger), HTTP(Retrofit·Ktor)를 알아냅니다. `build-logic` 컨벤션 플러그인도 따라갑니다. 그 프로젝트에 맞는 연동 코드를 만들고, 알아보지 못한 부분은 온디바이스 AI 가 프로젝트의 실제 코드를 보고 고쳐 씁니다. 화면 목록은 저장소 `schema.json` 에 PR 로 반영합니다 |
 | **온디바이스 AI** | llama.cpp + Gemma 3 를 이 컴퓨터에서 돌립니다. 안내 문구 다듬기·상황 설명으로 초안 만들기, 화면 이름에 한국어 라벨·구분 붙이기. 문구가 밖으로 나가지 않습니다 |
 
 ## 설치
@@ -54,7 +54,7 @@
 브라우저 로그인은 GitHub OAuth App 으로 진행됩니다. Client ID 는 `gradle.properties` 의 `switchboard.githubClientId` 에 들어 있고 비밀값이 아닙니다.
 
 - 조직이 서드파티 OAuth 앱 접근을 제한하면, 처음 로그인할 때 승인 화면의 조직 옆 **Request** 를 눌러 관리자 승인을 받아야 그 조직 저장소를 쓸 수 있습니다
-- 포크해서 자기 이름으로 배포하려면 OAuth App 을 새로 등록하고(Enable Device Flow 체크, Expire user access tokens 해제) Client ID 를 바꾸세요. 앱의 **설정 › GitHub OAuth App** 에서 실행 중에 바꿀 수도 있습니다
+- 포크해서 자기 이름으로 배포하려면 OAuth App 을 새로 등록하고(Enable Device Flow 체크, Expire user access tokens 해제) `gradle.properties` 의 Client ID 를 바꾸세요
 
 ## 저장소 형식
 
@@ -172,6 +172,10 @@ Gemma 3 1B 로 잰 결과 (M1 16GB):
 - java-llama.cpp 4.2.0 은 모델을 내려도 메모리를 완전히 돌려주지 않습니다 (4B → 1B 전환 시 이전 모델이 상주). 모델을 바꾸면 앱을 다시 켜는 편이 안전합니다
 - 번들된 llama.cpp(b4916)가 아는 아키텍처만 씁니다. Gemma 3 는 되고 Qwen3 는 로드되지 않습니다
 - 개발 중 `SWITCHBOARD_GH_AUTOLOGIN=1` 환경 변수로 실행하면 저장된 토큰이 없어도 `gh auth token` 으로 바로 로그인합니다
+
+## 쓰인 자료
+
+- GitHub 로그인 버튼의 마크: [Primer Octicons](https://github.com/primer/octicons) `mark-github-24` (MIT License, © GitHub Inc.). [GitHub 로고 사용 규칙](https://github.com/logos)에 따라 모양을 바꾸지 않고 단색으로 씁니다
 
 ## 라이선스
 

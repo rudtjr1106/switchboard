@@ -3,10 +3,14 @@ package io.github.rudtjr1106.switchboard.scanner
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.rudtjr1106.switchboard.scanner.parse.BuildScript
 import io.github.rudtjr1106.switchboard.scanner.parse.BuildScriptParser
+import io.github.rudtjr1106.switchboard.scanner.parse.Contribution
+import io.github.rudtjr1106.switchboard.scanner.parse.ConventionPluginScanner
 import io.github.rudtjr1106.switchboard.scanner.parse.DestinationScanner
 import io.github.rudtjr1106.switchboard.scanner.parse.KotlinSource
+import io.github.rudtjr1106.switchboard.scanner.parse.NavigationScan
 import io.github.rudtjr1106.switchboard.scanner.parse.SettingsScriptParser
 import io.github.rudtjr1106.switchboard.scanner.parse.VersionCatalogParser
+import io.github.rudtjr1106.switchboard.scanner.parse.XmlNavigationScanner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException
@@ -36,7 +40,8 @@ class GradleAndroidProjectScanner : AndroidProjectScanner {
     private fun scanNow(root: Path): AndroidProject {
         val settingsFile = listOf("settings.gradle.kts", "settings.gradle").map(root::resolve).firstOrNull { it.isRegularFile() }
             ?: throw ProjectScanException("settings.gradle(.kts) 를 찾지 못했어요. Android 프로젝트의 루트 폴더를 고르세요: $root")
-        val settings = SettingsScriptParser.parse(settingsFile.readText())
+        val settingsText = settingsFile.readText()
+        val settings = SettingsScriptParser.parse(settingsText)
         logger.debug { "settings: ${settings.modulePaths}" }
 
         val notes = mutableListOf<String>()
@@ -46,6 +51,8 @@ class GradleAndroidProjectScanner : AndroidProjectScanner {
             emptyMap()
         }
 
+        val conventions = ConventionPluginScanner.scan(root, settingsText, catalog)
+        val appliedConventions = LinkedHashSet<String>()
         val tree = SourceTree.collect(root)
         val missingScripts = mutableListOf<String>()
         val inferredNamespaces = mutableListOf<String>()
@@ -54,7 +61,12 @@ class GradleAndroidProjectScanner : AndroidProjectScanner {
             val scriptFile = listOf("build.gradle.kts", "build.gradle").map(dir::resolve).firstOrNull { it.isRegularFile() }
             val script = scriptFile?.let { BuildScriptParser.parse(it.readText()) }
                 ?: BuildScript(null, null, emptyList(), emptyList(), false).also { missingScripts += path }
-            val plugins = script.pluginRefs.map { ref -> if (ref.startsWith("libs.plugins.")) catalog[ref] ?: ref else ref }
+            val declared = script.pluginRefs.map { ref -> if (ref.startsWith("libs.plugins.")) catalog[ref] ?: ref else ref }
+            // 컨벤션 플러그인이 넣는 의존성·플러그인을 그 플러그인을 쓰는 모듈에 붙인다
+            val conventionIds = declared.filter { it in conventions.byPluginId }
+            appliedConventions += conventionIds
+            val contribution = conventionIds.map { conventions.byPluginId.getValue(it) }.fold(Contribution.EMPTY, Contribution::plus)
+            val plugins = (declared + contribution.plugins).distinct()
             val namespace = script.namespace
                 ?: manifestPackage(dir)
                 ?: tree.inferPackage(dir, path)?.also { inferredNamespaces += "$path → $it" }
@@ -65,7 +77,7 @@ class GradleAndroidProjectScanner : AndroidProjectScanner {
                 namespace = namespace,
                 isApplication = "com.android.application" in plugins,
                 plugins = plugins,
-                dependencies = script.dependencyRefs,
+                dependencies = script.dependencyRefs + contribution.dependencies,
             )
         }
         if (missingScripts.isNotEmpty()) notes += "build 스크립트를 찾지 못한 모듈: ${missingScripts.joinToString(", ")}"
@@ -76,12 +88,30 @@ class GradleAndroidProjectScanner : AndroidProjectScanner {
 
         val coordinates = modules.flatMapTo(LinkedHashSet()) { ProjectFacts.coordinatesOf(it, catalog) }
         val plugins = modules.flatMapTo(LinkedHashSet()) { it.plugins }
+        if (conventions.dirs.isNotEmpty()) {
+            val where = conventions.dirs.joinToString(", ") { root.relativize(it).toString() }
+            if (appliedConventions.isNotEmpty()) {
+                notes += "$where 의 컨벤션 플러그인 ${appliedConventions.size}개(${appliedConventions.joinToString(", ")})가 넣는 의존성까지 읽었어요"
+            } else if (!conventions.all.isEmpty) {
+                // 어느 모듈에 붙는지 모르지만 프로젝트 전체 판단(DI·HTTP·Compose)에는 넣는다
+                coordinates += conventions.all.dependencies
+                plugins += conventions.all.plugins
+                notes += "$where 에서 의존성을 읽었지만 어느 모듈에 붙는지는 알아내지 못했어요. 프로젝트 전체 판단에만 썼어요"
+            }
+        }
         val di = detectDi(coordinates, plugins)
         val http = detectHttp(coordinates, notes)
         if (di == DiFramework.NONE) notes += "DI 프레임워크를 찾지 못해 수동 생성 코드로 만들어요"
+        if (di == DiFramework.DAGGER) notes += "Hilt 없이 Dagger 를 써요. 만든 모듈을 앱의 @Component 에 직접 연결해야 해요"
         if (!ProjectFacts.usesCompose(coordinates, plugins)) notes += "Compose 를 쓰지 않아 안내 UI 는 직접 만들어야 해요"
 
-        val navigation = DestinationScanner.scan(tree.kotlin, root)
+        var navigation = DestinationScanner.scan(tree.kotlin, root)
+        if (navigation.style == NavigationStyle.UNKNOWN) {
+            val xml = XmlNavigationScanner.scan(root)
+            if (xml.isNotEmpty()) {
+                navigation = NavigationScan(NavigationStyle.XML_GRAPH, xml, listOf("res/navigation 의 XML 그래프에서 화면 ${xml.size}개를 읽었어요. 화면 이름은 android:id 이름이에요"))
+            }
+        }
         notes += navigation.notes
 
         val integrated = tree.kotlin.any { source ->
@@ -110,6 +140,7 @@ class GradleAndroidProjectScanner : AndroidProjectScanner {
         coordinates.any { it.startsWith("com.google.dagger:hilt-android") } ||
             "com.google.dagger.hilt.android" in plugins || "dagger.hilt.android.plugin" in plugins -> DiFramework.HILT
         coordinates.any { it.startsWith("io.insert-koin:") } -> DiFramework.KOIN
+        coordinates.any { it == "com.google.dagger:dagger" || it == "com.google.dagger:dagger-android" } -> DiFramework.DAGGER
         else -> DiFramework.NONE
     }
 

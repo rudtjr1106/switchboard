@@ -5,7 +5,7 @@ import io.github.rudtjr1106.switchboard.scanner.DiFramework
 /** 안내 목록을 받아두고 닫은 안내를 기억하는 ViewModel. `key`·`toScreenName` 도 여기 둔다 */
 internal object RemoteNoticeViewModelFile {
     fun render(ctx: TemplateContext): String {
-        val hiltImports = if (ctx.isHilt) listOf("dagger.hilt.android.lifecycle.HiltViewModel", "javax.inject.Inject") else emptyList()
+        val hiltImports = if (ctx.isHilt) listOf("dagger.hilt.android.lifecycle.HiltViewModel", "javax.inject.Inject") else ctx.injectImports
         val annotation = if (ctx.isHilt) "@HiltViewModel\n" else ""
         return ctx.source(
             ctx.uiPackage,

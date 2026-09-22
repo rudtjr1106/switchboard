@@ -4,6 +4,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.rudtjr1106.switchboard.scanner.templates.AppConfigResponseFile
 import io.github.rudtjr1106.switchboard.scanner.templates.GetRemoteNoticesUseCaseFile
 import io.github.rudtjr1106.switchboard.scanner.templates.HiltRemoteConfigBindModuleFile
+import io.github.rudtjr1106.switchboard.scanner.templates.DaggerModules
 import io.github.rudtjr1106.switchboard.scanner.templates.HiltRemoteConfigModuleFile
 import io.github.rudtjr1106.switchboard.scanner.templates.KoinRemoteConfigModuleFile
 import io.github.rudtjr1106.switchboard.scanner.templates.KtorEngine
@@ -71,7 +72,9 @@ class TemplateIntegrationGenerator : IntegrationGenerator {
                 "retrofit2.converter.kotlinx.serialization.asConverterFactory"
             },
             // DI 없이 계층이 나뉘면 컨테이너는 app 에, Host 는 presentation 에 있어 Host 가 컨테이너를 볼 수 없다
-            hostHasDefaultViewModel = project.di != DiFramework.NONE || !layout.layered,
+            // Dagger 는 ViewModel 을 만들 팩토리가 프로젝트마다 달라 기본값을 줄 수 없다
+            hostHasDefaultViewModel = project.di == DiFramework.HILT || project.di == DiFramework.KOIN ||
+                (project.di == DiFramework.NONE && !layout.layered),
             exampleScreen = project.destinationNames.firstOrNull { it != "Splash" } ?: target.screens.firstOrNull { !it.isAll }?.id ?: "Home",
         )
 
@@ -105,6 +108,11 @@ class TemplateIntegrationGenerator : IntegrationGenerator {
                 add(layout.di, ctx.diPackage, "RemoteConfigModule.kt", KoinRemoteConfigModuleFile.render(ctx))
                 notes += "Koin 모듈 remoteConfigModule 하나에 클라이언트부터 ViewModel 까지 담았어요"
             }
+            DiFramework.DAGGER -> {
+                add(layout.di, ctx.diPackage, "RemoteConfigModule.kt", DaggerModules.module(ctx))
+                add(layout.di, ctx.diPackage, "RemoteConfigBindModule.kt", DaggerModules.bindModule(ctx))
+                notes += "Hilt 없이 Dagger 를 써서 @InstallIn 없는 모듈 두 개를 만들었어요. 앱의 @Component 에 직접 넣어야 해요"
+            }
             DiFramework.NONE -> {
                 add(layout.di, ctx.diPackage, "RemoteConfigContainer.kt", RemoteConfigContainerFile.render(ctx))
                 notes += "DI 프레임워크를 찾지 못해 RemoteConfigContainer 가 싱글턴을 직접 들고 ViewModel 팩토리를 만들어요"
@@ -127,6 +135,11 @@ class TemplateIntegrationGenerator : IntegrationGenerator {
         if (!facts.hasInternetPermission) {
             val manifest = facts.manifestPath?.let { project.root.relativize(it) } ?: "app/src/main/AndroidManifest.xml"
             manualSteps += "$manifest 의 <manifest> 안에 인터넷 권한을 추가하세요:\n    <uses-permission android:name=\"android.permission.INTERNET\" />"
+        }
+        if (project.di == DiFramework.DAGGER) {
+            manualSteps += "앱의 Dagger 컴포넌트에 모듈을 넣으세요. Context 를 제공하는 모듈(@BindsInstance 등)도 있어야 해요:\n" +
+                "    @Component(modules = [/* 기존 모듈 */, RemoteConfigModule::class, RemoteConfigBindModule::class])\n" +
+                "RemoteNoticeHost 의 viewModel 에는 컴포넌트에서 주입받은 RemoteNoticeViewModel 을 넘기세요 (기존 ViewModelProvider.Factory 에 등록하면 화면 회전에도 유지돼요)"
         }
         if (project.di == DiFramework.KOIN) {
             manualSteps += "Application 의 startKoin 에 모듈을 등록하세요 (androidContext 가 캐시 폴더를 잡는 데 필요해요):\n" +
@@ -168,6 +181,13 @@ class TemplateIntegrationGenerator : IntegrationGenerator {
     /** Activity 에 Host 를 붙이는 방법. 자동으로 고치지 않는 유일한 코드 변경이라 예시를 그대로 붙일 수 있게 쓴다 */
     private fun hostStep(project: AndroidProject, ctx: TemplateContext, facts: ProjectFacts): String {
         val activity = findMainActivity(project.root)?.let { project.root.relativize(it).toString() } ?: "앱의 메인 Activity"
+        if (project.navigation == NavigationStyle.XML_GRAPH) {
+            return "XML 내비게이션이라 화면 이름은 목적지의 android:id 이름이에요. $activity 에서 현재 화면 이름을 이렇게 얻어 안내를 고르세요:\n" +
+                "    navController.addOnDestinationChangedListener { _, destination, _ ->\n" +
+                "        val screen = resources.getResourceEntryName(destination.id)\n" +
+                "        // notices.filter { it.targets(screen) && it.isShowable(LocalDate.now()) }\n" +
+                "    }" + if (facts.usesCompose) "\nCompose 화면이 있으면 RemoteNoticeHost(currentRoute = screen) 에 그 값을 넘기면 돼요" else ""
+        }
         if (!facts.usesCompose) {
             return "Compose 를 쓰지 않아 안내 UI(RemoteNoticeHost)는 만들지 않았어요. $activity 에서 RemoteNoticeViewModel 을 만들어 notices 를 관찰하고, " +
                 "현재 화면 이름에 맞는 안내(notice.targets(screen) && notice.isShowable(LocalDate.now()))를 다이얼로그로 띄우세요. " +

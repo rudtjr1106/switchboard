@@ -14,7 +14,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -53,10 +52,8 @@ import io.github.rudtjr1106.switchboard.github.TokenSource
 @Composable
 fun SettingsScreen(container: AppContainer, onBack: () -> Unit, initialDialog: AccountDialog? = null) {
     val session by container.session.state.collectAsState()
-    val settings by container.settings.settings.collectAsState()
     val ai by container.ai.state.collectAsState()
     val updateResult by container.updater.lastResult.collectAsState()
-    var clientId by remember { mutableStateOf(settings.githubClientId.orEmpty()) }
     var dialog by remember { mutableStateOf(initialDialog) }
     val signedIn = session as? SessionState.SignedIn
 
@@ -95,21 +92,6 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit, initialDialog: A
                         ModelCatalog.all.forEach { spec ->
                             ModelRow(container, spec, selected = ai.selected.id == spec.id, status = ai.statuses[spec.id] ?: ModelStatus.NotInstalled)
                         }
-                    }
-                }
-
-                SectionCard("고급 · GitHub OAuth App") {
-                    Caption("브라우저 로그인에 쓰는 OAuth App 의 Client ID 예요. 보통은 바꿀 필요가 없어요. 이 프로젝트를 포크해 직접 배포할 때만 자기 Client ID 를 넣으세요.")
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(
-                            value = clientId,
-                            onValueChange = { clientId = it },
-                            label = { Text("Client ID") },
-                            placeholder = { Text("기본값: ${BuildInfo.GITHUB_CLIENT_ID.ifBlank { "없음" }}") },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Button(onClick = { container.settings.update { it.copy(githubClientId = clientId.trim().ifBlank { null }) } }) { Text("저장") }
                     }
                 }
 

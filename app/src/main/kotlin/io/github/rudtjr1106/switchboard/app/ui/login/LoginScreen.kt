@@ -51,6 +51,7 @@ import io.github.rudtjr1106.switchboard.app.platform.DesktopActions
 import io.github.rudtjr1106.switchboard.app.session.SessionManager
 import io.github.rudtjr1106.switchboard.app.session.SessionState
 import io.github.rudtjr1106.switchboard.app.ui.components.Caption
+import io.github.rudtjr1106.switchboard.app.ui.components.GitHubSignInButton
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteBanner
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteKind
 import io.github.rudtjr1106.switchboard.app.ui.theme.Dimens
@@ -117,16 +118,10 @@ private fun SignedOutCard(session: SessionManager, state: SessionState.SignedOut
     state.error?.let { NoteBanner(it, NoteKind.ERROR) }
 
     if (hasClientId) {
-        Button(onClick = session::signInWithDeviceFlow, modifier = Modifier.fillMaxWidth()) {
-            Text("GitHub 으로 로그인")
-        }
+        GitHubSignInButton(onClick = session::signInWithDeviceFlow)
         Caption("브라우저가 열리고 8자리 코드를 입력하면 끝나요. 토큰은 이 Mac/PC 의 자격 증명 저장소에만 보관돼요.")
     } else {
-        NoteBanner(
-            "브라우저 로그인을 쓰려면 GitHub OAuth App 의 Client ID 가 필요해요. 설정에서 넣거나 아래 방법으로 로그인하세요.",
-            NoteKind.INFO,
-            action = { TextButton(onClick = onOpenSettings) { Text("설정") } },
-        )
+        NoteBanner("이 빌드에는 GitHub 로그인 설정이 들어 있지 않아요. 아래 방법으로 로그인하세요.", NoteKind.INFO)
     }
 
     if (state.ghCliAvailable) {

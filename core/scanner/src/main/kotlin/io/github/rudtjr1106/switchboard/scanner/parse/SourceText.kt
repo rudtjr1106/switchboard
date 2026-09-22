@@ -150,4 +150,9 @@ internal object SourceText {
         }
         return text.length
     }
+
+    /** XML 주석을 같은 길이의 공백으로 바꾼다. 위치(인덱스)가 원문과 같아야 해서 지우지 않는다 */
+    fun stripXmlComments(text: String): String = xmlComment.replace(text) { " ".repeat(it.value.length) }
+
+    private val xmlComment = Regex("<!--[\\s\\S]*?-->")
 }

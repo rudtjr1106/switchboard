@@ -307,3 +307,23 @@ ${code.constants.indentAll("    ")}
         )
     }
 }
+
+/**
+ * Hilt 없이 Dagger 만 쓰는 프로젝트. Hilt 모듈에서 컴포넌트 지정(@InstallIn)과 Hilt 전용 한정자만 뺀다
+ *
+ * 어느 @Component 에 넣을지는 프로젝트마다 달라 사람이 연결한다. Context 는 컴포넌트가 제공해야 한다(@BindsInstance 등).
+ */
+internal object DaggerModules {
+    fun module(ctx: TemplateContext): String = dehilt(HiltRemoteConfigModuleFile.render(ctx))
+
+    fun bindModule(ctx: TemplateContext): String = dehilt(HiltRemoteConfigBindModuleFile.render(ctx))
+
+    private fun dehilt(source: String): String = source.lines()
+        .filterNot { line ->
+            val trimmed = line.trim()
+            trimmed.startsWith("@InstallIn(") || trimmed.startsWith("import dagger.hilt.")
+        }
+        .joinToString("\n")
+        .replace("@ApplicationContext context: Context", "context: Context")
+        .replace("기존 DI 모듈을 고치지 않아도 되도록 필요한 것을 모두 여기서 제공한다.", "앱의 Dagger @Component 의 modules 에 이 모듈을 넣어야 한다.")
+}
