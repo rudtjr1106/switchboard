@@ -1,0 +1,9 @@
+# Windows 에서도 LF 로 체크아웃한다. 저장소 파일을 바이트 그대로 되쓰는 테스트가 CRLF 변환에 깨진다
+* text=auto eol=lf
+*.bat text eol=crlf
+
+*.png binary
+*.ico binary
+*.icns binary
+*.jar binary
+*.gguf binary
