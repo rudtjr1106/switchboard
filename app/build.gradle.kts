@@ -177,6 +177,9 @@ val packageMacDmg by tasks.registering {
     val dmgFile = layout.buildDirectory.file("compose/binaries/main/dmg/$displayName-$appVersion.dmg")
     onlyIf { System.getProperty("os.name").lowercase().contains("mac") }
     outputs.file(dmgFile)
+    // 서명 신원·공증 여부가 바뀌어도 결과 파일 이름은 같아서, 건너뛰지 않고 매번 새로 만든다
+    inputs.property("signingIdentity", signingIdentity ?: "")
+    outputs.upToDateWhen { false }
     doLast {
         fun run(vararg command: String) {
             val process = ProcessBuilder(*command).inheritIO().start()
