@@ -1,6 +1,8 @@
 package io.github.rudtjr1106.switchboard.app.setup
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.github.rudtjr1106.switchboard.ai.ScreenDrafts
+import io.github.rudtjr1106.switchboard.ai.ScreenHint
 import io.github.rudtjr1106.switchboard.app.ai.AiManager
 import io.github.rudtjr1106.switchboard.app.editor.EditorModel
 import io.github.rudtjr1106.switchboard.app.session.SessionState
@@ -120,8 +122,11 @@ class ProjectSetupModel(
         val existing = editor.current.schema?.catalog
         val ordered = listOf(ScreenCatalog.ALL) + review.project.destinationNames.filter { it in review.selected } +
             review.selected.filterNot { it in review.project.destinationNames || it == ScreenCatalog.ALL }
+        val hints = hintsFor(review.project)
+        // 저장소에 이미 이름이 있으면 그것을, 없으면 모델 없이 만든 초안(주석·구역·용어 사전)을 먼저 채워 둔다
         val screens = ordered.map { id ->
-            existing?.find(id)?.takeIf { it.hasMetadata } ?: if (id == ScreenCatalog.ALL) ScreenInfo(id, ScreenCatalog.ALL_LABEL, ScreenCatalog.ALL_GROUP) else ScreenInfo(id)
+            existing?.find(id)?.takeIf { it.hasMetadata }
+                ?: if (id == ScreenCatalog.ALL) ScreenInfo(id, ScreenCatalog.ALL_LABEL, ScreenCatalog.ALL_GROUP) else ScreenDrafts.draft(hints[id] ?: ScreenHint(id))
         }
         _state.value = SetupStep.Labeling(review.project, screens)
     }
@@ -138,8 +143,9 @@ class ProjectSetupModel(
         _state.value = labeling.copy(aiRunning = true, aiError = null)
         aiJob = scope.launch {
             try {
-                val ids = labeling.screens.map { it.id }.filterNot { it == ScreenCatalog.ALL }
-                val labeled = ai.labeler.label(ids, labeling.project.name).associateBy { it.id }
+                val hints = hintsFor(labeling.project)
+                val requested = labeling.screens.map { it.id }.filterNot { it == ScreenCatalog.ALL }.map { hints[it] ?: ScreenHint(it) }
+                val labeled = ai.labeler.labelWithHints(requested, labeling.project.name).associateBy { it.id }
                 _state.update { step ->
                     (step as? SetupStep.Labeling)?.copy(
                         screens = step.screens.map { screen -> labeled[screen.id]?.let { screen.copy(label = it.label, group = it.group) } ?: screen },
@@ -248,6 +254,10 @@ class ProjectSetupModel(
             }
         }
     }
+
+    /** 스캔한 목적지의 주석·구역을 AI 하네스 힌트로 바꾼다 */
+    private fun hintsFor(project: AndroidProject): Map<String, ScreenHint> =
+        project.destinations.associate { it.name to ScreenHint(it.name, it.comment, it.section) }
 
     fun restart() {
         aiJob?.cancel()

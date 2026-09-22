@@ -205,12 +205,12 @@ private fun Labeling(container: AppContainer, model: ProjectSetupModel, step: Se
     val aiState by container.ai.state.collectAsState()
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("편집기 사이드바와 README 에 보일 이름과 구분이에요. 비워 두면 경로 이름이 그대로 보여요.", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            Text("편집기 사이드바와 README 에 보일 이름과 구분이에요. 소스 주석·구역 제목으로 초안을 채워 뒀어요. AI 로 다듬거나 직접 고치세요.", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
             val reason = container.ai.unavailableReason()
             OutlinedButton(onClick = model::runAiLabels, enabled = reason == null && !step.aiRunning && !aiState.isBusy) {
                 Icon(Icons.Outlined.AutoAwesome, null, Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
-                Text(if (step.aiRunning) "만드는 중…" else "AI 로 라벨 만들기")
+                Text(if (step.aiRunning) "다듬는 중…" else "AI 로 다듬기")
             }
         }
         container.ai.unavailableReason()?.let { Caption(it) }

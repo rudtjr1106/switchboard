@@ -1,0 +1,18 @@
+{
+  "source": "draft 는 운영진이 한 줄로 적을 법한 상황, polish 의 원문은 UMC-PRODUCT 원격 설정 저장소에 실제로 있던 안내(딱딱한 말투 포함)",
+  "draft": [
+    { "situation": "9월 20일 새벽 2시부터 4시까지 서버 점검", "template": "BLOCKING" },
+    { "situation": "이메일 발송량이 많아서 인증 메일이 늦게 갈 수 있음", "template": "INFO" },
+    { "situation": "파트에서 트랙 기준으로 바뀌어서 1~2일 동안 스터디 기능 사용 불가", "template": "INFO" },
+    { "situation": "가입 신청이 몰려서 승인이 3일 정도 늦어짐", "template": "INFO" },
+    { "situation": "10월 1일부터 3.2.0 미만 버전은 로그인이 안 되니 업데이트 필요", "template": "INFO" },
+    { "situation": "푸시 알림 서버 장애로 알림이 오지 않음. 복구 중", "template": "INFO" },
+    { "situation": "데이터베이스 이전 작업으로 11월 2일 0시부터 6시까지 앱 사용 불가", "template": "BLOCKING" },
+    { "situation": "커뮤니티 글 작성 시 이미지 첨부 오류, 수정 배포 예정", "template": "INFO" }
+  ],
+  "polish": [
+    { "title": "스터디 정보를 옮기고 있어요", "body": "현재 앱이 파트에서 트랙 기준으로 바뀌어, 이에 맞게 수정 중에 있습니다. 1~2일 동안은 스터디 관련 기능이 사용 불가하니 양해 부탁드립니다.", "template": "INFO" },
+    { "title": "서버 점검 안내", "body": "9월 20일 02:00부터 04:00까지 서버 점검이 진행됩니다. 이용에 불편을 드려 죄송합니다.", "template": "BLOCKING" },
+    { "title": "인증 메일 지연 안내", "body": "현재 이메일 발송량 증가로 인하여 인증 메일 수신이 지연될 수 있습니다. 메일 미수신 시 익일 재시도 바랍니다.", "template": "INFO" }
+  ]
+}

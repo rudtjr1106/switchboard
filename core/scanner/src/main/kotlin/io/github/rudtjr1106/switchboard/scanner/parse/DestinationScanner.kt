@@ -75,19 +75,21 @@ internal object DestinationScanner {
         val comment: String?,
         val navKey: Boolean,
         val file: Path,
+        val section: String? = null,
     )
 
     private class Group(val name: String, val file: Path, val isNavKey: Boolean) {
         val members = mutableListOf<Member>()
         fun destinations(): List<Destination> = members
             .filter { it.serializable || it.navKey || isNavKey }
-            .map { Destination(it.name, it.file, it.hasArguments, it.comment) }
+            .map { Destination(it.name, it.file, it.hasArguments, it.comment, it.section) }
     }
 
     private class SealedType(val name: String, val body: IntRange?, val group: Group)
 
     private fun groupsIn(source: KotlinSource): List<Group> {
         val text = source.text
+        val sections = sectionHeaders(text)
         if (!text.contains("sealed") && !text.contains("NavKey")) return emptyList()
 
         val clean = SourceText.stripComments(text)
@@ -150,9 +152,23 @@ internal object DestinationScanner {
                 comment = commentAbove(text, clean, lineStart, start),
                 navKey = navKey.containsMatchIn(supertypes),
                 file = source.path,
+                section = sections.lastOrNull { it.first < start }?.second,
             )
         }
         return groups.values.toList()
+    }
+
+    /**
+     * 구역 제목 주석의 위치와 이름. 목적지 그룹(구분)을 정하는 힌트다
+     *
+     * - `/**공지 섹션**/`, `/* 커뮤니티 섹션 */` 처럼 '섹션' 으로 끝나는 한 줄 블록 주석
+     * - Android Studio 의 `// region 인증` (`//region`) 접기 표시
+     */
+    private fun sectionHeaders(text: String): List<Pair<Int, String>> {
+        val headers = mutableListOf<Pair<Int, String>>()
+        sectionBlock.findAll(text).forEach { headers += it.range.first to it.groupValues[1].trim() }
+        regionMarker.findAll(text).forEach { headers += it.range.first to it.groupValues[1].trim() }
+        return headers.filter { it.second.isNotEmpty() }.sortedBy { it.first }
     }
 
     /** 선언 키워드 앞, 같은 줄에 있는 수식어들 (`private data`, `sealed`, `companion`) */
@@ -279,4 +295,7 @@ internal object DestinationScanner {
         }
         return seen.values.toList()
     }
+
+    private val sectionBlock = Regex("""/\*+\s*([^*\n]*?섹션)\s*\*+/""")
+    private val regionMarker = Regex("""//\s*region\b[ \t]*([^\n]*)""")
 }

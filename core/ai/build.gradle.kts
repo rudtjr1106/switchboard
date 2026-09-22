@@ -32,3 +32,17 @@ tasks.test {
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
 }
+
+// 받아 둔 모델로 하네스 평가를 돌려 build/reports/ai-eval/ 에 점수를 남긴다: ./gradlew :core:ai:aiEval
+val aiEval by tasks.registering(Test::class) {
+    group = "verification"
+    description = "온디바이스 AI 하네스 평가 (실제 모델 필요)"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform()
+    filter { includeTestsMatching("*HarnessEvalTest*") }
+    environment("SWITCHBOARD_AI_EVAL", "1")
+    outputs.upToDateWhen { false }
+    testLogging { showStandardStreams = true }
+    maxHeapSize = "2g"
+}

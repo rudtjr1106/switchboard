@@ -19,12 +19,18 @@ data class GradleModule(
     val dependencies: List<String>,
 )
 
-/** 내비게이션 목적지 하나. `MainDestination.EmailSignUp` 이면 name = "EmailSignUp" */
+/**
+ * 내비게이션 목적지 하나. `MainDestination.EmailSignUp` 이면 name = "EmailSignUp"
+ *
+ * @property comment 선언 바로 위(또는 같은 줄 끝)의 주석. 화면 이름을 붙일 때 힌트로 쓴다
+ * @property section 이 선언이 속한 구역 제목. `/**공지 섹션**/` 이면 "공지 섹션", `// region 인증` 이면 "인증"
+ */
 data class Destination(
     val name: String,
     val file: Path,
     val hasArguments: Boolean,
     val comment: String? = null,
+    val section: String? = null,
 )
 
 data class AndroidProject(

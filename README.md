@@ -106,6 +106,32 @@ Kotlin 2.4 · Compose Multiplatform 1.12 (Desktop) · Gradle 9. JDK 는 툴체�
 | `core/scanner` | Android 프로젝트 스캔(Gradle 파일·내비게이션 목적지), 연동 코드 템플릿 |
 | `app` | Compose Desktop UI, 세션·워크스페이스·편집기 상태 |
 
+### 온디바이스 AI 하네스
+
+작은 로컬 모델(Gemma 3 1B·4B)이 틀리기 쉬운 부분을 코드로 먼저 잡고, 모델은 다듬기만 하게 합니다.
+
+| 단계 | 화면 라벨 | 안내 문구 |
+|---|---|---|
+| 결정적 초안 | 목적지 주석(`//공지 상세`), 구역 제목(`/**공지 섹션**/`, `// region`), 용어 사전으로 라벨·구분 초안 (`ScreenDrafts`) | 실제 UMC 안내를 예시로 넣은 말투 규칙 |
+| 모델 | 초안이 약한 화면만 보내고, 믿지 못할 주석은 빼고 보여줌 | JSON 스키마로 `{title, body}` 강제 |
+| 검증 | 한글·길이·말 빠짐·화살표 검사. 통과 못 하면 초안 유지. 구역이 있으면 구분은 구역을 따름 | 합쇼체→해요체 변환(`KoreanTone`), 인사말 제거, 날짜·숫자 누락·글자 수 검사 후 한 번 다시 쓰기 (`NoticeChecks`) |
+
+정답 세트는 `core/ai/src/test/resources/harness/` 에 있습니다. UMC-PRODUCT/umc-product-android 의 화면 34개(주석·구역은 소스 그대로, 이름·구분은 원격 설정 README 표)와 안내 문구 11건입니다.
+
+```sh
+./gradlew :core:ai:test     # 결정적 초안 기준선 (라벨 70%·구분 95% 아래로 떨어지면 실패)
+./gradlew :core:ai:aiEval   # 받아 둔 모델로 평가, build/reports/ai-eval/ 에 보고서
+```
+
+Gemma 3 1B 로 잰 결과 (M1 16GB):
+
+| | 라벨 정확 | 구분 정확 | 안내 문구 검사 통과 |
+|---|---|---|---|
+| 모델만 (id 만 넘김) | 41~44% | 74% | 1/11 (하네스 전) |
+| 하네스 | 71% | 100% | 11/11 |
+
+4B 모델을 받아 두면 `aiEval` 이 자동으로 4B 로 평가합니다.
+
 ### 앱 이름
 
 보이는 이름은 **스위치보드**, 저장소·패키지·데이터 폴더(`~/Library/Application Support/Switchboard`)는 영문 `Switchboard` 입니다.

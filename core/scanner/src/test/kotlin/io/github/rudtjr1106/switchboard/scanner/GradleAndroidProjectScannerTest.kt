@@ -80,6 +80,47 @@ class GradleAndroidProjectScannerTest {
     }
 
     @Test
+    fun `umc-like destinations carry their section header`() = runTest {
+        val project = scanner.scan(Fixtures.project("umc-like"))
+        val sections = project.destinations.associate { it.name to it.section }
+        // 첫 섹션 제목 전의 시작·인증 화면들은 구역이 없다
+        assertEquals(null, sections["Login"])
+        assertEquals(null, sections["SignUpFailCode"])
+        assertEquals("활동 섹션", sections["Act"])
+        assertEquals("활동 섹션", sections["AdminStudyGroupSchedule"])
+        assertEquals("공지 섹션", sections["NoticeDetail"])
+        assertEquals("홈 화면 섹션", sections["ScheduleDetail"])
+        // '내 qr코드 페이지' 는 섹션이 아니라 Qrcode 의 주석이다
+        assertEquals("마이 페이지 섹션", sections["Qrcode"])
+        assertEquals("내 qr코드 페이지", project.destinations.first { it.name == "Qrcode" }.comment)
+        assertEquals("커뮤니티 섹션", sections["CommunityChatting"])
+    }
+
+    @Test
+    fun `android studio region markers become sections`() = runTest {
+        val root = Fixtures.tempDir()
+        root.writeFile("settings.gradle.kts", "rootProject.name = \"demo\"\ninclude(\":app\")\n")
+        root.writeFile("app/build.gradle.kts", "plugins { id(\"com.android.application\") }\nandroid { namespace = \"com.example\" }\n")
+        root.writeFile(
+            "app/src/main/java/com/example/Route.kt",
+            """
+            package com.example
+            import kotlinx.serialization.Serializable
+            sealed interface Route {
+                // region 인증
+                @Serializable data object Login : Route
+                // endregion
+                //region 홈
+                @Serializable data object Home : Route
+                // endregion
+            }
+            """.trimIndent(),
+        )
+        val project = scanner.scan(root)
+        assertEquals(mapOf("Login" to "인증", "Home" to "홈"), project.destinations.associate { it.name to it.section })
+    }
+
+    @Test
     fun `integrated fixture reports the existing remote config code`() = runTest {
         val project = scanner.scan(Fixtures.project("umc-like-integrated"))
         assertTrue(project.hasRemoteConfigIntegration)
