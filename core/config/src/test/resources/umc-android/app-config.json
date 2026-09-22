@@ -1,0 +1,14 @@
+{
+  "$schema": "./schema.json",
+  "version": 1,
+  "notices": [
+    {
+      "screen": "Act",
+      "enabled": false,
+      "template": "INFO",
+      "title": "스터디 정보를 옮기고 있어요",
+      "body": "현재 앱이 파트에서 트랙 기준으로 바뀌어, 이에 맞게 수정 중에 있습니다. 1~2일 동안은 스터디 관련 기능이 사용 불가하니 양해 부탁드립니다.",
+      "until": "2026-09-17"
+    }
+  ]
+}

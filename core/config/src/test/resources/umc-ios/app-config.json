@@ -1,0 +1,14 @@
+{
+  "$schema": "./schema.json",
+  "version": 1,
+  "minimumVersion": "",
+  "notices": [
+    {
+      "screen": "ALL",
+      "enabled": false,
+      "template": "BLOCKING",
+      "title": "서비스 점검 중이에요",
+      "body": "더 나은 서비스를 위해 점검하고 있어요. 잠시 후 다시 이용해주세요."
+    }
+  ]
+}

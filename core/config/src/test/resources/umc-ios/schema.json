@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["version", "minimumVersion", "notices"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "const": 1 },
+    "minimumVersion": { "type": "string", "pattern": "^([0-9]+(\\.[0-9]+){0,2})?$" },
+    "notices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["screen", "enabled", "template", "title", "body"],
+        "additionalProperties": false,
+        "properties": {
+          "screen": { "enum": ["ALL", "login", "signUp", "pendingApproval", "home", "notice", "activity", "community", "mypage"] },
+          "enabled": { "type": "boolean" },
+          "template": { "enum": ["INFO", "BLOCKING"] },
+          "title": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "body": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "until": { "type": "string", "format": "date" }
+        }
+      }
+    }
+  }
+}

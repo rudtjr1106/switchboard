@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["version", "notices"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "const": 1 },
+    "notices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["screen", "enabled", "template", "title", "body"],
+        "additionalProperties": false,
+        "properties": {
+          "screen": { "enum": ["ALL", "Login", "EmailLogin", "FindPassword", "EmailSignUp", "SocialSignUp", "SignUp", "Permission", "SignUpFail", "SignUpFailCode", "Home", "Notification", "ScheduleAdd", "ScheduleEdit", "ScheduleDetail", "Notice", "NoticeSearch", "NoticeDetail", "NoticeWrite", "AdminNotice", "Act", "AdminChallengerDetail", "AdminStudyGroupCreate", "AdminStudyGroupSchedule", "Community", "CommunitySearch", "CommunityCreate", "CommunityEdit", "CommunityChatting", "Mycard", "Mypage", "MyProfile", "MyContent", "Qrcode", "ReceivedCard"] },
+          "enabled": { "type": "boolean" },
+          "template": { "enum": ["INFO", "BLOCKING"] },
+          "title": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "body": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "until": { "type": "string", "format": "date" }
+        }
+      }
+    }
+  }
+}
