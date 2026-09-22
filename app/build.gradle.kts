@@ -1,4 +1,7 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.LinkOption
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -183,16 +186,16 @@ val packageMacDmg by tasks.registering {
          * 심볼릭 링크를 따라가지 않고 지운다. 스테이지에는 /Applications 를 가리키는 링크가 있어서
          * File.deleteRecursively() 로 지우면 링크를 따라 들어가 실제 /Applications 의 앱을 지운다 (실제로 일어난 사고)
          */
-        fun deleteTree(root: java.io.File) {
+        fun deleteTree(root: File) {
             val path = root.toPath()
-            if (!java.nio.file.Files.exists(path, java.nio.file.LinkOption.NOFOLLOW_LINKS)) return
-            if (java.nio.file.Files.isSymbolicLink(path)) {
-                java.nio.file.Files.delete(path)
+            if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) return
+            if (Files.isSymbolicLink(path)) {
+                Files.delete(path)
                 return
             }
             // Files.walk 는 FOLLOW_LINKS 를 주지 않으면 링크 안으로 들어가지 않고 링크 자체만 돌려준다
-            java.nio.file.Files.walk(path).use { stream ->
-                stream.sorted(Comparator.reverseOrder()).forEach { java.nio.file.Files.delete(it) }
+            Files.walk(path).use { stream ->
+                stream.sorted(Comparator.reverseOrder()).forEach { Files.delete(it) }
             }
         }
         val stage = stageDir.get().asFile.also { deleteTree(it); it.mkdirs() }
@@ -222,7 +225,7 @@ val packageMacDmg by tasks.registering {
             run("hdiutil", "create", "-volname", displayName, "-srcfolder", stage.absolutePath, "-format", "UDZO", "-ov", dmg.absolutePath)
         } finally {
             // DMG 에 담았으면 링크는 바로 지운다. 빌드 폴더에 /Applications 링크를 남겨 두지 않는다
-            java.nio.file.Files.deleteIfExists(applicationsLink.toPath())
+            Files.deleteIfExists(applicationsLink.toPath())
         }
         if (signingIdentity != null) {
             run("codesign", "--force", "--timestamp", "--sign", "Developer ID Application: $signingIdentity", dmg.absolutePath)
