@@ -23,4 +23,13 @@ jobs:
       - name: 테스트
         run: ./gradlew test --console=plain
       - name: 배포본 생성 (설치 파일 없이)
+        if: runner.os != 'Windows'
         run: ./gradlew :app:createDistributable --console=plain
+      # Windows 는 MSI(WiX)까지 만들어 본다. 한글 이름처럼 설치 파일 단계에서만 나는 문제를 미리 잡는다
+      - name: MSI 만들기
+        if: runner.os == 'Windows'
+        run: ./gradlew :app:packageMsi --console=plain
+      - name: jpackage 로그
+        if: failure()
+        shell: bash
+        run: for f in app/build/compose/logs/*/*.txt; do echo "=== $f"; cat "$f"; done
