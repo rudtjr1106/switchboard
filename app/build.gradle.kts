@@ -103,7 +103,8 @@ compose.desktop {
             // 앱 창 제목·메뉴는 코드에서 스위치보드로 보인다
             packageName = "Switchboard"
             packageVersion = appVersion
-            description = "Android 원격 설정(remote config) 편집기"
+            // MSI 표에 들어가므로 한글을 쓰지 않는다 (WiX 3 코드 페이지 1252)
+            description = "Remote config editor for Android apps"
             vendor = "rudtjr1106"
             copyright = "© 2026 rudtjr1106. MIT License."
             licenseFile.set(rootProject.file("LICENSE"))
