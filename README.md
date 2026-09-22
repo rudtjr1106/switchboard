@@ -45,12 +45,14 @@
 
 | 방식 | 필요한 것 |
 |---|---|
-| 브라우저 로그인 (추천) | GitHub OAuth App 의 Client ID. 빌드에 넣거나 **설정 › GitHub OAuth App** 에 붙여 넣습니다 |
+| 브라우저 로그인 (추천) | 없음. **GitHub 으로 로그인** 을 누르고 브라우저에 8자리 코드를 넣으면 끝납니다 |
 | gh CLI | `brew install gh` + `gh auth login`. 앱이 `gh auth token` 으로 토큰을 빌려 씁니다 |
 | Personal Access Token | `repo` · `workflow` · `read:org` 스코프 |
 
-OAuth App 등록: GitHub › Settings › Developer settings › OAuth Apps › **New OAuth App** → 아무 Callback URL 이나 넣고 **Enable Device Flow** 를 켠 뒤 Client ID 를 복사합니다. Client ID 는 비밀값이 아닙니다.
-릴리즈 빌드에 넣으려면 저장소 시크릿 `SWITCHBOARD_GITHUB_CLIENT_ID` 를 만들어 두면 `release.yml` 이 주입합니다.
+브라우저 로그인은 GitHub OAuth App **Switchboard** 로 진행됩니다. Client ID 는 `gradle.properties` 의 `switchboard.githubClientId` 에 들어 있고 비밀값이 아닙니다.
+
+- 조직이 서드파티 OAuth 앱 접근을 제한하면, 처음 로그인할 때 승인 화면의 조직 옆 **Request** 를 눌러 관리자 승인을 받아야 그 조직 저장소를 쓸 수 있습니다
+- 포크해서 자기 이름으로 배포하려면 OAuth App 을 새로 등록하고(Enable Device Flow 체크, Expire user access tokens 해제) Client ID 를 바꾸세요. 앱의 **설정 › GitHub OAuth App** 에서 실행 중에 바꿀 수도 있습니다
 
 ## 저장소 형식
 

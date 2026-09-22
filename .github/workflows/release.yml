@@ -41,7 +41,7 @@ jobs:
       - name: 테스트
         run: ./gradlew test --console=plain
       - name: 설치 파일 만들기
-        run: ./gradlew :app:${{ matrix.task }} --console=plain -Pswitchboard.githubClientId=${{ secrets.SWITCHBOARD_GITHUB_CLIENT_ID }}
+        run: ./gradlew :app:${{ matrix.task }} --console=plain
       - uses: actions/upload-artifact@v4
         with:
           name: installer-${{ matrix.os }}
