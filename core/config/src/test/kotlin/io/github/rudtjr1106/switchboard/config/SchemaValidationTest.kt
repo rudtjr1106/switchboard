@@ -23,4 +23,13 @@ class SchemaValidationTest {
         val config = Fixtures.androidConfigText.replace("\"Act\"", "\"Nowhere\"")
         assertTrue(SchemaValidation.validate(config, Fixtures.androidSchemaText).isNotEmpty())
     }
+
+    @Test
+    fun `switchboard label metadata does not change the result`() {
+        val schema = SchemaRenderer.withScreens(Fixtures.androidSchemaText, Fixtures.androidSchema.catalog.screens + ScreenInfo("Settings", "설정", "MY"))
+        assertTrue(schema.contains("x-switchboard"))
+        val config = Fixtures.androidConfigText.replace("\"Act\"", "\"Settings\"")
+        assertTrue(SchemaValidation.validate(config, schema).isEmpty())
+        assertTrue(SchemaValidation.validate(config.replace("\"Settings\"", "\"Nowhere\""), schema).isNotEmpty())
+    }
 }
