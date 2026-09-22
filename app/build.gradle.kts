@@ -20,6 +20,17 @@ kotlin {
 
 val appVersion: String = providers.gradleProperty("switchboard.version").get()
 val displayName = "스위치보드"
+
+/**
+ * macOS 서명 신원. `Developer ID Application: <이 값>` 인증서가 키체인에 있어야 한다 (예: `홍길동 (ABCDE12345)`)
+ * 환경 변수 SWITCHBOARD_SIGNING_IDENTITY 나 ~/.gradle/gradle.properties 의 switchboard.signingIdentity 로 준다. 없으면 서명하지 않는다
+ */
+val signingIdentity: String? = providers.environmentVariable("SWITCHBOARD_SIGNING_IDENTITY")
+    .orElse(providers.gradleProperty("switchboard.signingIdentity")).orNull?.takeIf { it.isNotBlank() }
+
+/** `xcrun notarytool store-credentials <이름>` 으로 저장한 공증 프로필 이름 */
+val notaryProfile: String = providers.environmentVariable("SWITCHBOARD_NOTARY_PROFILE")
+    .orElse(providers.gradleProperty("switchboard.notaryProfile")).orElse("SwitchboardNotary").get()
 val githubClientId: String = providers.gradleProperty("switchboard.githubClientId").orElse("").get()
 
 // 빌드 시점 상수를 코드로 만든다 (Android 의 BuildConfig 와 같은 역할)
@@ -116,6 +127,13 @@ compose.desktop {
                 bundleID = "io.github.rudtjr1106.switchboard"
                 // 메뉴 막대·앱 전환기(CFBundleName)에 보이는 이름
                 dockName = displayName
+                // 서명하면 Compose 가 jar 안의 네이티브 라이브러리(llama.cpp, Skia)까지 서명하고 Hardened Runtime 을 켠다
+                if (signingIdentity != null) {
+                    signing {
+                        sign.set(true)
+                        identity.set(signingIdentity)
+                    }
+                }
                 iconFile.set(project.file("icons/switchboard.icns"))
                 infoPlist {
                     extraKeysRawXml = """
@@ -161,14 +179,66 @@ val packageMacDmg by tasks.registering {
             val process = ProcessBuilder(*command).inheritIO().start()
             check(process.waitFor() == 0) { "${command.first()} 실패: ${command.joinToString(" ")}" }
         }
-        val stage = stageDir.get().asFile.apply { deleteRecursively(); mkdirs() }
+        /**
+         * 심볼릭 링크를 따라가지 않고 지운다. 스테이지에는 /Applications 를 가리키는 링크가 있어서
+         * File.deleteRecursively() 로 지우면 링크를 따라 들어가 실제 /Applications 의 앱을 지운다 (실제로 일어난 사고)
+         */
+        fun deleteTree(root: java.io.File) {
+            val path = root.toPath()
+            if (!java.nio.file.Files.exists(path, java.nio.file.LinkOption.NOFOLLOW_LINKS)) return
+            if (java.nio.file.Files.isSymbolicLink(path)) {
+                java.nio.file.Files.delete(path)
+                return
+            }
+            // Files.walk 는 FOLLOW_LINKS 를 주지 않으면 링크 안으로 들어가지 않고 링크 자체만 돌려준다
+            java.nio.file.Files.walk(path).use { stream ->
+                stream.sorted(Comparator.reverseOrder()).forEach { java.nio.file.Files.delete(it) }
+            }
+        }
+        val stage = stageDir.get().asFile.also { deleteTree(it); it.mkdirs() }
         val dmg = dmgFile.get().asFile.apply { parentFile.mkdirs(); delete() }
         val bundle = stage.resolve("$displayName.app")
         // ditto 는 확장 속성과 서명을 그대로 옮긴다
-        run("ditto", appDir.get().asFile.resolve("Switchboard.app").absolutePath, bundle.absolutePath)
-        run("codesign", "--verify", "--strict", bundle.absolutePath)
-        run("ln", "-s", "/Applications", stage.resolve("Applications").absolutePath)
-        run("hdiutil", "create", "-volname", displayName, "-srcfolder", stage.absolutePath, "-format", "UDZO", "-ov", dmg.absolutePath)
-        logger.lifecycle("완료: ${dmg.absolutePath}")
+        fun exitCode(vararg command: String): Int = ProcessBuilder(*command).redirectErrorStream(true).start().waitFor()
+        val app = appDir.get().asFile.resolve("Switchboard.app")
+        // 서명했으면 공증 프로필이 있을 때 앱을 먼저 공증하고 티켓을 붙인다. 그래야 오프라인에서도 Gatekeeper 가 통과시킨다
+        val notarize = signingIdentity != null &&
+            exitCode("xcrun", "notarytool", "history", "--keychain-profile", notaryProfile) == 0
+        if (signingIdentity != null && !notarize) {
+            logger.warn("공증 프로필 '$notaryProfile' 이 없어 서명만 해요. xcrun notarytool store-credentials $notaryProfile … 으로 만들면 공증까지 해요")
+        }
+        if (notarize) {
+            val zip = stage.parentFile.resolve("Switchboard-notarize.zip").apply { delete() }
+            run("ditto", "-c", "-k", "--keepParent", app.absolutePath, zip.absolutePath)
+            logger.lifecycle("앱 공증 중… (몇 분 걸려요)")
+            run("xcrun", "notarytool", "submit", zip.absolutePath, "--keychain-profile", notaryProfile, "--wait")
+            run("xcrun", "stapler", "staple", app.absolutePath)
+        }
+        run("ditto", app.absolutePath, bundle.absolutePath)
+        run("codesign", "--verify", "--strict", "--deep", bundle.absolutePath)
+        val applicationsLink = stage.resolve("Applications")
+        run("ln", "-s", "/Applications", applicationsLink.absolutePath)
+        try {
+            run("hdiutil", "create", "-volname", displayName, "-srcfolder", stage.absolutePath, "-format", "UDZO", "-ov", dmg.absolutePath)
+        } finally {
+            // DMG 에 담았으면 링크는 바로 지운다. 빌드 폴더에 /Applications 링크를 남겨 두지 않는다
+            java.nio.file.Files.deleteIfExists(applicationsLink.toPath())
+        }
+        if (signingIdentity != null) {
+            run("codesign", "--force", "--timestamp", "--sign", "Developer ID Application: $signingIdentity", dmg.absolutePath)
+        }
+        if (notarize) {
+            logger.lifecycle("DMG 공증 중…")
+            run("xcrun", "notarytool", "submit", dmg.absolutePath, "--keychain-profile", notaryProfile, "--wait")
+            run("xcrun", "stapler", "staple", dmg.absolutePath)
+            run("spctl", "--assess", "--type", "open", "--context", "context:primary-signature", "--verbose", dmg.absolutePath)
+        }
+        logger.lifecycle(
+            "완료: ${dmg.absolutePath} (" + when {
+                notarize -> "서명·공증됨"
+                signingIdentity != null -> "서명됨, 공증 안 됨"
+                else -> "서명 안 됨"
+            } + ")",
+        )
     }
 }
