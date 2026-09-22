@@ -20,7 +20,6 @@ kotlin {
 
 val appVersion: String = providers.gradleProperty("switchboard.version").get()
 val displayName = "스위치보드"
-val isWindows = System.getProperty("os.name").lowercase().contains("win")
 val githubClientId: String = providers.gradleProperty("switchboard.githubClientId").orElse("").get()
 
 // 빌드 시점 상수를 코드로 만든다 (Android 의 BuildConfig 와 같은 역할)
@@ -98,9 +97,11 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi)
-            // 실행 파일 이름. macOS codesign 은 실행 파일 이름이 한글이면 서명하지 못해서 영문으로 두고,
-            // 보이는 이름(스위치보드)은 macOS 는 번들 폴더 이름(packageMacDmg)과 dockName, Windows 는 시작 메뉴 이름으로 준다
-            packageName = if (isWindows) displayName else "Switchboard"
+            // 실행 파일·설치 파일 안의 이름은 영문으로 둔다
+            // - macOS: codesign 이 실행 파일 이름이 한글이면 서명하지 못한다. 보이는 이름은 번들 폴더(packageMacDmg)와 dockName 으로 준다
+            // - Windows: WiX 3 의 MSI 는 기본 코드 페이지(1252)라 한글 제품 이름을 담지 못한다(LGHT0311)
+            // 앱 창 제목·메뉴는 코드에서 스위치보드로 보인다
+            packageName = "Switchboard"
             packageVersion = appVersion
             description = "Android 원격 설정(remote config) 편집기"
             vendor = "rudtjr1106"
@@ -128,7 +129,7 @@ compose.desktop {
             }
             windows {
                 iconFile.set(project.file("icons/switchboard.ico"))
-                menuGroup = displayName
+                menuGroup = "Switchboard"
                 perUserInstall = true
                 shortcut = true
                 dirChooser = false

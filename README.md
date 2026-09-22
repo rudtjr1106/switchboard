@@ -37,7 +37,7 @@
 
 ## 설치
 
-1. [Releases](https://github.com/rudtjr1106/switchboard/releases/latest) 에서 `Switchboard.dmg`(macOS) 또는 `Switchboard.msi`(Windows)를 받습니다. 설치하면 앱 이름은 **스위치보드**로 보입니다
+1. [Releases](https://github.com/rudtjr1106/switchboard/releases/latest) 에서 `Switchboard.dmg`(macOS) 또는 `Switchboard.msi`(Windows)를 받습니다. macOS 는 `스위치보드.app` 으로 설치되고, Windows 는 시작 메뉴에 `Switchboard` 로 보입니다
 2. macOS: 열린 창에서 앱을 `Applications` 로 끌어다 놓습니다. Windows: MSI 를 실행합니다
 3. 처음 켜면 GitHub 로그인 화면이 나옵니다
 
@@ -137,7 +137,8 @@ Gemma 3 1B 로 잰 결과 (M1 16GB):
 보이는 이름은 **스위치보드**, 저장소·패키지·데이터 폴더(`~/Library/Application Support/Switchboard`)는 영문 `Switchboard` 입니다.
 
 - macOS `codesign` 은 실행 파일 이름이 한글이면 서명하지 못합니다. 그래서 실행 파일은 `Switchboard` 로 두고, `packageMacDmg` 가 서명된 번들을 `스위치보드.app` 폴더 이름으로 담습니다. 폴더 이름은 서명에 들어가지 않아 서명이 유지됩니다
-- 메뉴 막대·Dock 이름은 `dockName`(`-Xdock:name`), Windows 시작 메뉴·설치 폴더는 `packageName` 으로 정합니다
+- 메뉴 막대·Dock 이름은 `dockName`(`-Xdock:name`)으로 정합니다
+- Windows 는 시작 메뉴·설치 폴더가 영문 `Switchboard` 입니다. WiX 3 로 만드는 MSI 는 기본 코드 페이지(1252)라 한글 제품 이름을 담지 못합니다(LGHT0311). 앱 창 제목과 메뉴는 스위치보드로 보입니다
 
 ### 브랜드 이미지
 
