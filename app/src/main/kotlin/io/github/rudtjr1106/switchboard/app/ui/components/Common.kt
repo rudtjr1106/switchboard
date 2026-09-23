@@ -18,11 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Error
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +31,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.github.rudtjr1106.switchboard.app.ui.icons.AppIcons
 import io.github.rudtjr1106.switchboard.app.ui.theme.Dimens
 import io.github.rudtjr1106.switchboard.app.ui.theme.status
 import io.github.rudtjr1106.switchboard.github.StepState
@@ -86,10 +82,10 @@ enum class NoteKind { INFO, WARNING, ERROR, SUCCESS }
 @Composable
 fun NoteBanner(text: String, kind: NoteKind = NoteKind.INFO, modifier: Modifier = Modifier, action: (@Composable () -> Unit)? = null) {
     val (icon, tint) = when (kind) {
-        NoteKind.INFO -> Icons.Outlined.Info to MaterialTheme.colorScheme.primary
-        NoteKind.WARNING -> Icons.Outlined.Warning to MaterialTheme.status.expired
-        NoteKind.ERROR -> Icons.Outlined.Error to MaterialTheme.colorScheme.error
-        NoteKind.SUCCESS -> Icons.Outlined.CheckCircle to MaterialTheme.status.live
+        NoteKind.INFO -> AppIcons.Info to MaterialTheme.colorScheme.primary
+        NoteKind.WARNING -> AppIcons.Warning to MaterialTheme.status.expired
+        NoteKind.ERROR -> AppIcons.Error to MaterialTheme.colorScheme.error
+        NoteKind.SUCCESS -> AppIcons.CheckCircle to MaterialTheme.status.live
     }
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -150,8 +146,8 @@ fun StepRow(title: String, state: StepState, isLast: Boolean = false) {
                 when (state) {
                     StepState.Waiting -> Box(Modifier.size(10.dp).border(1.5.dp, MaterialTheme.colorScheme.outline, CircleShape))
                     StepState.Running -> CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                    StepState.Done -> Icon(Icons.Outlined.CheckCircle, null, tint = MaterialTheme.status.live, modifier = Modifier.size(20.dp))
-                    is StepState.Failed -> Icon(Icons.Outlined.Error, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                    StepState.Done -> Icon(AppIcons.CheckCircle, null, tint = MaterialTheme.status.live, modifier = Modifier.size(20.dp))
+                    is StepState.Failed -> Icon(AppIcons.Error, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
                 }
             }
             Text(

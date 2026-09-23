@@ -12,13 +12,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AddCircleOutline
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.RemoveCircleOutline
-import androidx.compose.material.icons.outlined.ToggleOff
-import androidx.compose.material.icons.outlined.ToggleOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -38,11 +31,12 @@ import io.github.rudtjr1106.switchboard.app.editor.ApplyState
 import io.github.rudtjr1106.switchboard.app.editor.EditorModel
 import io.github.rudtjr1106.switchboard.app.editor.EditorState
 import io.github.rudtjr1106.switchboard.app.platform.DesktopActions
-import io.github.rudtjr1106.switchboard.app.ui.components.DialogHeader
 import io.github.rudtjr1106.switchboard.app.ui.components.Caption
+import io.github.rudtjr1106.switchboard.app.ui.components.DialogHeader
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteBanner
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteKind
 import io.github.rudtjr1106.switchboard.app.ui.components.StepRow
+import io.github.rudtjr1106.switchboard.app.ui.icons.AppIcons
 import io.github.rudtjr1106.switchboard.app.ui.theme.Dimens
 import io.github.rudtjr1106.switchboard.app.ui.theme.status
 import io.github.rudtjr1106.switchboard.config.Change
@@ -110,11 +104,11 @@ private fun Confirming(editor: EditorModel, apply: ApplyState.Confirming) {
 private fun ChangeRow(change: Change) {
     val status = MaterialTheme.status
     val (icon, tint) = when (change.kind) {
-        ChangeKind.ADDED -> Icons.Outlined.AddCircleOutline to status.live
-        ChangeKind.REMOVED -> Icons.Outlined.RemoveCircleOutline to MaterialTheme.colorScheme.error
-        ChangeKind.ENABLED -> Icons.Outlined.ToggleOn to status.live
-        ChangeKind.DISABLED -> Icons.Outlined.ToggleOff to status.off
-        ChangeKind.MODIFIED -> Icons.Outlined.Edit to MaterialTheme.colorScheme.primary
+        ChangeKind.ADDED -> AppIcons.AddCircleOutline to status.live
+        ChangeKind.REMOVED -> AppIcons.RemoveCircleOutline to MaterialTheme.colorScheme.error
+        ChangeKind.ENABLED -> AppIcons.ToggleOn to status.live
+        ChangeKind.DISABLED -> AppIcons.ToggleOff to status.off
+        ChangeKind.MODIFIED -> AppIcons.Edit to MaterialTheme.colorScheme.primary
     }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Icon(icon, null, Modifier.size(18.dp), tint = tint)
@@ -148,7 +142,7 @@ private fun Progress(title: String, progress: ApplyProgress, error: String?, edi
 @Composable
 private fun Finished(editor: EditorModel, apply: ApplyState.Finished) {
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Icon(Icons.Outlined.CheckCircle, null, Modifier.size(56.dp), tint = MaterialTheme.status.live)
+        Icon(AppIcons.CheckCircle, null, Modifier.size(56.dp), tint = MaterialTheme.status.live)
         Text(if (apply.result.deployed) "배포됐어요" else "머지됐어요", style = MaterialTheme.typography.titleLarge)
         Caption(
             if (apply.result.deployed) "앱에는 최대 10분 뒤에 반영돼요. 캐시가 10분이라 그래요."

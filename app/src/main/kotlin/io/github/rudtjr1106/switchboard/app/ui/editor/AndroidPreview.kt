@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -30,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.rudtjr1106.switchboard.app.ui.components.Caption
+import io.github.rudtjr1106.switchboard.app.ui.icons.AppIcons
 import io.github.rudtjr1106.switchboard.app.ui.theme.status
 import io.github.rudtjr1106.switchboard.config.Notice
 import io.github.rudtjr1106.switchboard.config.NoticeTemplate
@@ -119,7 +118,7 @@ private fun BlockingScreen(notice: Notice) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(Icons.Outlined.Build, null, Modifier.size(34.dp), tint = Color(0xFF8E90A0))
+        Icon(AppIcons.Build, null, Modifier.size(34.dp), tint = Color(0xFF8E90A0))
         Spacer(Modifier.height(14.dp))
         Text(notice.title.ifBlank { "제목" }, fontSize = 15.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, color = if (notice.title.isBlank()) Color(0xFFB0B2BD) else Color(0xFF1B1B1F), lineHeight = 20.sp)
         Spacer(Modifier.height(8.dp))

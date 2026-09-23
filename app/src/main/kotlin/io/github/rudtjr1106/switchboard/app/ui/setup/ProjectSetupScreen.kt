@@ -19,18 +19,13 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import io.github.rudtjr1106.switchboard.app.setup.PlanningProgress
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -54,17 +49,19 @@ import io.github.rudtjr1106.switchboard.app.editor.EditorModel
 import io.github.rudtjr1106.switchboard.app.platform.DesktopActions
 import io.github.rudtjr1106.switchboard.app.platform.DirectoryPicker
 import io.github.rudtjr1106.switchboard.app.session.SessionState
+import io.github.rudtjr1106.switchboard.app.setup.PlanningProgress
 import io.github.rudtjr1106.switchboard.app.setup.ProjectSetupModel
 import io.github.rudtjr1106.switchboard.app.setup.SetupStep
 import io.github.rudtjr1106.switchboard.app.ui.components.Caption
-import io.github.rudtjr1106.switchboard.app.ui.components.ConfirmDialog
-import io.github.rudtjr1106.switchboard.app.ui.components.PageScaffold
 import io.github.rudtjr1106.switchboard.app.ui.components.CodeBlock
+import io.github.rudtjr1106.switchboard.app.ui.components.ConfirmDialog
 import io.github.rudtjr1106.switchboard.app.ui.components.KeyValueRow
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteBanner
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteKind
+import io.github.rudtjr1106.switchboard.app.ui.components.PageScaffold
 import io.github.rudtjr1106.switchboard.app.ui.components.SectionCard
 import io.github.rudtjr1106.switchboard.app.ui.components.StepRow
+import io.github.rudtjr1106.switchboard.app.ui.icons.AppIcons
 import io.github.rudtjr1106.switchboard.app.ui.theme.Dimens
 import io.github.rudtjr1106.switchboard.app.ui.theme.status
 import io.github.rudtjr1106.switchboard.config.ScreenCatalog
@@ -146,7 +143,7 @@ private fun PickFolder(model: ProjectSetupModel, step: SetupStep.PickFolder, win
             Button(onClick = {
                 DirectoryPicker.pick(window, "Android 프로젝트 폴더 선택", model.lastProjectPath)?.let(model::pick)
             }) {
-                Icon(Icons.Outlined.FolderOpen, null, Modifier.size(18.dp))
+                Icon(AppIcons.FolderOpen, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("폴더 고르기")
             }
@@ -210,7 +207,7 @@ private fun Labeling(container: AppContainer, model: ProjectSetupModel, step: Se
             Text("편집기 사이드바와 README 에 보일 이름과 구분이에요. 소스 주석·구역 제목으로 초안을 채워 뒀어요. AI 로 다듬거나 직접 고치세요.", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
             val reason = container.ai.unavailableReason()
             OutlinedButton(onClick = model::runAiLabels, enabled = reason == null && !step.aiRunning && !aiState.isBusy) {
-                Icon(Icons.Outlined.AutoAwesome, null, Modifier.size(16.dp))
+                Icon(AppIcons.AutoAwesome, null, Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(if (step.aiRunning) "다듬는 중…" else "AI 로 다듬기")
             }
@@ -354,7 +351,7 @@ private fun Running(step: SetupStep.Running) {
 private fun Done(model: ProjectSetupModel, step: SetupStep.Done, onClose: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Icon(Icons.Outlined.CheckCircle, null, Modifier.size(28.dp), tint = MaterialTheme.status.live)
+            Icon(AppIcons.CheckCircle, null, Modifier.size(28.dp), tint = MaterialTheme.status.live)
             Text("세팅이 끝났어요", style = MaterialTheme.typography.titleLarge)
         }
         step.note?.let { NoteBanner(it, if (it.contains("실패")) NoteKind.ERROR else NoteKind.INFO) }

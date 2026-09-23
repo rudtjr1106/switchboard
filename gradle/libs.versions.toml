@@ -1,7 +1,6 @@
 [versions]
 kotlin = "2.4.20"
 compose = "1.12.0"
-composeIcons = "1.7.3"
 coroutines = "1.11.0"
 serialization = "1.11.0"
 ktor = "3.6.0"
@@ -34,7 +33,6 @@ koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", ver
 
 lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
-compose-material-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "composeIcons" }
 
 llama = { module = "de.kherud:llama", version.ref = "llama" }
 json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "jsonSchema" }

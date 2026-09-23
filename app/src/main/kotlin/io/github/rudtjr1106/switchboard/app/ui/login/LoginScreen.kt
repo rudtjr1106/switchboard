@@ -17,10 +17,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
@@ -54,6 +50,7 @@ import io.github.rudtjr1106.switchboard.app.ui.components.Caption
 import io.github.rudtjr1106.switchboard.app.ui.components.GitHubSignInButton
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteBanner
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteKind
+import io.github.rudtjr1106.switchboard.app.ui.icons.AppIcons
 import io.github.rudtjr1106.switchboard.app.ui.theme.Dimens
 
 @Composable
@@ -126,7 +123,7 @@ private fun SignedOutCard(session: SessionManager, state: SessionState.SignedOut
 
     if (state.ghCliAvailable) {
         OutlinedButton(onClick = session::signInWithGhCli, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Outlined.Terminal, null, Modifier.size(18.dp))
+            Icon(AppIcons.Terminal, null, Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text("gh CLI 로그인 사용")
         }
@@ -166,12 +163,12 @@ private fun SigningInCard(state: SessionState.SigningIn, onCancel: () -> Unit) {
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { state.verificationUri?.let(DesktopActions::openUrl) }) {
-                Icon(Icons.AutoMirrored.Outlined.OpenInNew, null, Modifier.size(18.dp))
+                Icon(AppIcons.OpenInNew, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("브라우저 열기")
             }
             OutlinedButton(onClick = { DesktopActions.copyToClipboard(state.userCode) }) {
-                Icon(Icons.Outlined.ContentCopy, null, Modifier.size(18.dp))
+                Icon(AppIcons.ContentCopy, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("코드 복사")
             }

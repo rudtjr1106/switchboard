@@ -15,9 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -41,6 +38,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
+import io.github.rudtjr1106.switchboard.app.ui.icons.AppIcons
 import io.github.rudtjr1106.switchboard.app.ui.theme.Dimens
 
 /**
@@ -99,7 +97,7 @@ fun PageScaffold(
 fun BackButton(onBack: () -> Unit, enabled: Boolean = true, disabledReason: String? = null, label: String = "뒤로 (Esc)") {
     Hint(if (enabled) label else disabledReason ?: label) {
         IconButton(onClick = onBack, enabled = enabled) {
-            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
+            Icon(AppIcons.ArrowBack, contentDescription = "뒤로")
         }
     }
 }
@@ -121,7 +119,7 @@ fun DialogHeader(title: String, onClose: () -> Unit, closeEnabled: Boolean = tru
         Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
         if (closeEnabled) {
             IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Outlined.Close, contentDescription = "닫기", modifier = Modifier.size(20.dp))
+                Icon(AppIcons.Close, contentDescription = "닫기", modifier = Modifier.size(20.dp))
             }
         }
     }

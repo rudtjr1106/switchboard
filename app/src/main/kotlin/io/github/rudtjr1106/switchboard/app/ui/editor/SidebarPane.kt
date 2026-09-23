@@ -17,11 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Block
-import androidx.compose.material.icons.outlined.SystemUpdate
-import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +31,7 @@ import io.github.rudtjr1106.switchboard.app.editor.EditorModel
 import io.github.rudtjr1106.switchboard.app.editor.EditorState
 import io.github.rudtjr1106.switchboard.app.editor.Selection
 import io.github.rudtjr1106.switchboard.app.ui.components.StatusDot
+import io.github.rudtjr1106.switchboard.app.ui.icons.AppIcons
 import io.github.rudtjr1106.switchboard.app.ui.theme.Dimens
 import io.github.rudtjr1106.switchboard.app.ui.theme.status
 import io.github.rudtjr1106.switchboard.config.Notice
@@ -54,7 +50,7 @@ fun SidebarPane(editor: EditorModel, state: EditorState, modifier: Modifier = Mo
                 item {
                     val selected = state.selection == Selection.MinimumVersion
                     SidebarRow(selected = selected, onClick = { editor.select(Selection.MinimumVersion) }) {
-                        Icon(Icons.Outlined.SystemUpdate, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(AppIcons.SystemUpdate, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.width(10.dp))
                         Column {
                             Text("강제 업데이트", style = MaterialTheme.typography.bodyMedium)
@@ -71,7 +67,7 @@ fun SidebarPane(editor: EditorModel, state: EditorState, modifier: Modifier = Mo
                 Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 6.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("화면 안내", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.weight(1f))
-                    IconButton(onClick = editor::addNotice, modifier = Modifier.size(28.dp)) { Icon(Icons.Outlined.Add, "안내 추가", Modifier.size(18.dp)) }
+                    IconButton(onClick = editor::addNotice, modifier = Modifier.size(28.dp)) { Icon(AppIcons.Add, "안내 추가", Modifier.size(18.dp)) }
                 }
             }
             if (state.draft.notices.isEmpty()) {
@@ -130,8 +126,8 @@ private fun RowScope.NoticeRowContent(notice: Notice, screenLabel: String, hasIs
     val status = MaterialTheme.status
     Box(Modifier.size(18.dp), contentAlignment = Alignment.Center) {
         when {
-            hasIssues -> Icon(Icons.Outlined.Warning, "입력 오류", Modifier.size(16.dp), tint = status.warning)
-            notice.isBlocking && notice.status(today) == NoticeStatus.LIVE -> Icon(Icons.Outlined.Block, "차단", Modifier.size(16.dp), tint = status.blocking)
+            hasIssues -> Icon(AppIcons.Warning, "입력 오류", Modifier.size(16.dp), tint = status.warning)
+            notice.isBlocking && notice.status(today) == NoticeStatus.LIVE -> Icon(AppIcons.Block, "차단", Modifier.size(16.dp), tint = status.blocking)
             else -> StatusDot(
                 when (notice.status(today)) {
                     NoticeStatus.LIVE -> status.live

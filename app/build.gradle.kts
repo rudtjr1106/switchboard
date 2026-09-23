@@ -2,7 +2,9 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.LinkOption
+import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
+import java.util.zip.ZipOutputStream
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -77,7 +79,6 @@ dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
     implementation(compose.components.resources)
-    implementation(libs.compose.material.icons.extended)
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.kotlinx.coroutines.swing)
@@ -167,6 +168,88 @@ compose.desktop {
 }
 
 /**
+ * 다른 OS·CPU 용 네이티브 라이브러리를 jar 에서 뺀다
+ *
+ * java-llama.cpp 는 Mac·Windows·Linux·Android 용 네이티브를 한 jar 에 담아 두어 32MB 가 되고, JNA 도 20여 개 플랫폼을
+ * 담고 있다. 설치 파일은 어차피 만든 OS 에서만 돌아가므로(번들된 JDK 도 그 OS·CPU 용이다) 나머지는 용량 낭비다.
+ *
+ * jar 를 고치면 macOS 앱 번들의 서명이 깨지므로, [packageMacDmg] 가 이 작업 뒤에 앱을 다시 서명한다.
+ */
+val trimNativeLibraries by tasks.registering {
+    group = "compose desktop"
+    description = "설치 파일에 필요 없는 다른 OS 용 네이티브를 jar 에서 뺀다"
+    dependsOn("createDistributable")
+    val appDir = layout.buildDirectory.dir("compose/binaries/main/app")
+    // 제자리에서 고치는 작업이라 건너뛰지 않는다 (두 번 돌려도 같은 결과다)
+    outputs.upToDateWhen { false }
+    doLast {
+        val osName = System.getProperty("os.name").lowercase()
+        val arch = System.getProperty("os.arch").lowercase()
+        val is64 = arch in setOf("x86_64", "amd64")
+        val llamaKeep = when {
+            osName.contains("mac") -> "de/kherud/llama/Mac/"
+            osName.contains("win") -> "de/kherud/llama/Windows/"
+            else -> "de/kherud/llama/Linux/"
+        } + if (is64) "x86_64/" else "aarch64/"
+        val jnaKeep = "com/sun/jna/" + when {
+            osName.contains("mac") -> "darwin-"
+            osName.contains("win") -> "win32-"
+            else -> "linux-"
+        } + (if (is64) "x86-64" else "aarch64") + "/"
+        val jnaPlatformDir = Regex("""^com/sun/jna/(darwin|win32|linux|aix|freebsd|openbsd|sunos|dragonflybsd)-[^/]*/""")
+        val llamaPlatformDir = Regex("""^de/kherud/llama/[^/]+/[^/]+/""")
+
+        /** 이 항목을 빼도 되는가 (다른 플랫폼의 네이티브인가) */
+        fun isForeign(name: String): Boolean = when {
+            llamaPlatformDir.containsMatchIn(name) -> !name.startsWith(llamaKeep)
+            jnaPlatformDir.containsMatchIn(name) -> !name.startsWith(jnaKeep)
+            else -> false
+        }
+
+        val jarDir = appDir.get().asFile.walkTopDown().maxDepth(4)
+            .firstOrNull { it.isDirectory && it.name == "app" && it.listFiles { f -> f.name.endsWith(".jar") }?.isNotEmpty() == true }
+            ?: error("앱 이미지에서 jar 폴더를 찾지 못했어요: ${appDir.get().asFile}")
+        var savedBytes = 0L
+        for (jar in jarDir.listFiles { f -> f.name.endsWith(".jar") }?.sorted().orEmpty()) {
+            val foreign = ZipFile(jar).use { zip -> zip.entries().toList().filter { isForeign(it.name) } }
+            if (foreign.isEmpty()) continue
+            val before = jar.length()
+            val trimmed = File(jar.parentFile, jar.name + ".trimmed")
+            ZipFile(jar).use { zip ->
+                ZipOutputStream(trimmed.outputStream().buffered()).use { out ->
+                    for (entry in zip.entries()) {
+                        if (isForeign(entry.name)) continue
+                        out.putNextEntry(ZipEntry(entry.name))
+                        if (!entry.isDirectory) zip.getInputStream(entry).use { it.copyTo(out) }
+                        out.closeEntry()
+                    }
+                }
+            }
+            check(trimmed.renameTo(jar) || (jar.delete() && trimmed.renameTo(jar))) { "jar 를 바꾸지 못했어요: $jar" }
+            savedBytes += before - jar.length()
+            logger.lifecycle("네이티브 정리: ${jar.name} (${foreign.size} 개, ${(before - jar.length()) / 1024 / 1024}MB 절약)")
+        }
+        logger.lifecycle("네이티브 정리 합계: ${savedBytes / 1024 / 1024}MB 절약 (남긴 것: $llamaKeep, $jnaKeep)")
+
+        // jar 를 고치면 앱 번들의 서명 봉인(CodeResources)이 깨진다. macOS 는 서명 없이 만들 때도 Compose 가 ad-hoc 서명을
+        // 붙이므로, 정리한 뒤에는 늘 다시 서명한다. 신원이 있으면 packageMacDmg 가 entitlements 까지 붙여 한 번 더 서명한다
+        if (savedBytes > 0 && osName.contains("mac")) {
+            val bundle = appDir.get().asFile.resolve("Switchboard.app")
+            val identity = signingIdentity?.let { "Developer ID Application: $it" } ?: "-"
+            val process = ProcessBuilder("codesign", "--force", "--deep", "--sign", identity, bundle.absolutePath)
+                .inheritIO().start()
+            check(process.waitFor() == 0) { "정리 뒤 앱을 다시 서명하지 못했어요: $bundle" }
+            logger.lifecycle("정리 뒤 앱 다시 서명: ${if (signingIdentity != null) "Developer ID" else "ad-hoc"}")
+        }
+    }
+}
+
+// 설치 파일을 만들기 전에 네이티브를 정리한다 (macOS 는 packageMacDmg 가 직접 순서를 잡는다)
+tasks.matching { it.name in setOf("packageMsi", "packageExe", "packageDeb") }.configureEach {
+    dependsOn(trimNativeLibraries)
+}
+
+/**
  * macOS 설치 파일. 서명된 Switchboard.app 을 `스위치보드.app` 폴더 이름으로 담는다
  *
  * codesign 은 실행 파일 이름이 한글이면 서명하지 못하지만, 번들 폴더 이름은 서명에 들어가지 않아 바꿔도 서명이 유지된다.
@@ -175,7 +258,7 @@ compose.desktop {
 val packageMacDmg by tasks.registering {
     group = "compose desktop"
     description = "macOS DMG (앱 이름: $displayName)"
-    dependsOn("createDistributable")
+    dependsOn("createDistributable", trimNativeLibraries)
     val appDir = layout.buildDirectory.dir("compose/binaries/main/app")
     val stageDir = layout.buildDirectory.dir("mac-dmg/stage")
     val dmgFile = layout.buildDirectory.file("compose/binaries/main/dmg/$displayName-$appVersion.dmg")
@@ -248,8 +331,8 @@ val packageMacDmg by tasks.registering {
                     logger.lifecycle("jar 안 네이티브 서명: ${jar.name} :: $entry")
                 }
             }
-            if (signed > 0) {
-                // jar 를 고쳤으니 앱 번들 서명을 다시 한다
+            run {
+                // trimNativeLibraries 와 위 서명으로 jar 가 바뀌었으니 앱 번들 서명을 다시 한다
                 val entitlements = layout.buildDirectory.dir("compose/default-resources").get().asFile
                     .walkTopDown().firstOrNull { it.name == "default-entitlements.plist" }
                 val command = mutableListOf("codesign", "--force", "--options", "runtime", "--timestamp")

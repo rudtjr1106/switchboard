@@ -13,13 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Build
-import androidx.compose.material.icons.outlined.CloudUpload
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
@@ -50,11 +43,12 @@ import io.github.rudtjr1106.switchboard.app.session.SessionState
 import io.github.rudtjr1106.switchboard.app.ui.components.CenteredMessage
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteBanner
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteKind
+import io.github.rudtjr1106.switchboard.app.ui.icons.AppIcons
 import io.github.rudtjr1106.switchboard.app.ui.theme.Dimens
 import io.github.rudtjr1106.switchboard.github.GitHubRepo
-import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.Instant
+import kotlinx.coroutines.delay
 
 @Composable
 fun EditorScreen(
@@ -146,13 +140,13 @@ private fun Toolbar(
             }
             Text(subtitle(editorState), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        ToolbarIcon(Icons.Outlined.Refresh, "새로고침", onReload)
-        ToolbarIcon(Icons.AutoMirrored.Outlined.OpenInNew, "GitHub 에서 열기", onOpenGitHub)
-        ToolbarIcon(Icons.Outlined.Build, "Android 프로젝트 세팅", onOpenSetup)
-        ToolbarIcon(Icons.Outlined.Settings, "설정", onOpenSettings)
+        ToolbarIcon(AppIcons.Refresh, "새로고침", onReload)
+        ToolbarIcon(AppIcons.OpenInNew, "GitHub 에서 열기", onOpenGitHub)
+        ToolbarIcon(AppIcons.Build, "Android 프로젝트 세팅", onOpenSetup)
+        ToolbarIcon(AppIcons.Settings, "설정", onOpenSettings)
         if (editorState.hasChanges) {
             OutlinedButton(onClick = onRevert) {
-                Icon(Icons.AutoMirrored.Outlined.Undo, null, Modifier.size(16.dp))
+                Icon(AppIcons.Undo, null, Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("되돌리기")
             }
@@ -166,7 +160,7 @@ private fun Toolbar(
             }
         }) {
             Button(onClick = onApply, enabled = blocked == null) {
-                Icon(Icons.Outlined.CloudUpload, null, Modifier.size(16.dp))
+                Icon(AppIcons.CloudUpload, null, Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("적용")
             }

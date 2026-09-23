@@ -14,19 +14,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
@@ -51,6 +48,7 @@ import io.github.rudtjr1106.switchboard.app.editor.EditorState
 import io.github.rudtjr1106.switchboard.app.ui.components.Caption
 import io.github.rudtjr1106.switchboard.app.ui.components.CharacterCounter
 import io.github.rudtjr1106.switchboard.app.ui.components.SectionCard
+import io.github.rudtjr1106.switchboard.app.ui.icons.AppIcons
 import io.github.rudtjr1106.switchboard.app.ui.theme.Dimens
 import io.github.rudtjr1106.switchboard.app.ui.theme.status
 import io.github.rudtjr1106.switchboard.config.ConfigDates
@@ -110,7 +108,7 @@ fun NoticeForm(container: AppContainer, editor: EditorModel, state: EditorState,
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         TextButton(onClick = { aiMode = AiCopyMode.DRAFT }, enabled = reason == null && !aiState.isBusy) { Text("상황으로 초안 만들기") }
                         OutlinedButton(onClick = { aiMode = AiCopyMode.POLISH }, enabled = reason == null && !aiState.isBusy && (notice.title.isNotBlank() || notice.body.isNotBlank())) {
-                            Icon(Icons.Outlined.AutoAwesome, null, Modifier.size(16.dp))
+                            Icon(AppIcons.AutoAwesome, null, Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
                             Text("AI 로 다듬기")
                         }
@@ -162,7 +160,7 @@ fun NoticeForm(container: AppContainer, editor: EditorModel, state: EditorState,
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = { editor.deleteNotice(notice.id) }) {
-                    Icon(Icons.Outlined.Delete, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
+                    Icon(AppIcons.Delete, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.width(6.dp))
                     Text("안내 삭제", color = MaterialTheme.colorScheme.error)
                 }

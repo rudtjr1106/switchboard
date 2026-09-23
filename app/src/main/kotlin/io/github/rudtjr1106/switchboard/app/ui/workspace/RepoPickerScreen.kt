@@ -16,12 +16,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Logout
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -43,18 +37,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.rudtjr1106.switchboard.app.di.AppContainer
+import io.github.rudtjr1106.switchboard.app.platform.AppPaths
+import io.github.rudtjr1106.switchboard.app.platform.DesktopActions
 import io.github.rudtjr1106.switchboard.app.session.SessionState
 import io.github.rudtjr1106.switchboard.app.ui.components.BackButton
 import io.github.rudtjr1106.switchboard.app.ui.components.Caption
 import io.github.rudtjr1106.switchboard.app.ui.components.Hint
-import io.github.rudtjr1106.switchboard.app.ui.settings.LogoutDialog
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteBanner
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteKind
+import io.github.rudtjr1106.switchboard.app.ui.icons.AppIcons
+import io.github.rudtjr1106.switchboard.app.ui.settings.LogoutDialog
 import io.github.rudtjr1106.switchboard.app.ui.theme.Dimens
 import io.github.rudtjr1106.switchboard.app.update.AvailableUpdate
 import io.github.rudtjr1106.switchboard.app.update.UpdateChecker
-import io.github.rudtjr1106.switchboard.app.platform.AppPaths
-import io.github.rudtjr1106.switchboard.app.platform.DesktopActions
 import io.github.rudtjr1106.switchboard.app.workspace.WorkspaceState
 import io.github.rudtjr1106.switchboard.github.GitHubRepo
 import io.github.rudtjr1106.switchboard.github.RepoRef
@@ -80,8 +75,8 @@ fun RepoPickerScreen(container: AppContainer, session: SessionState.SignedIn, st
                 if (returnTo != null) Caption("지금 연 저장소: ${returnTo.editor.ref.fullName}")
             }
             Text("@${session.user.login}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Hint("설정") { IconButton(onClick = onOpenSettings) { Icon(Icons.Outlined.Settings, "설정") } }
-            Hint("로그아웃") { IconButton(onClick = { confirmLogout = true }) { Icon(Icons.AutoMirrored.Outlined.Logout, "로그아웃") } }
+            Hint("설정") { IconButton(onClick = onOpenSettings) { Icon(AppIcons.Settings, "설정") } }
+            Hint("로그아웃") { IconButton(onClick = { confirmLogout = true }) { Icon(AppIcons.Logout, "로그아웃") } }
         }
         HorizontalDivider()
         Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), contentAlignment = Alignment.TopCenter) {
@@ -99,9 +94,9 @@ fun RepoPickerScreen(container: AppContainer, session: SessionState.SignedIn, st
                     Spacer(Modifier.width(8.dp))
                     Caption("topic: switchboard-config")
                     Spacer(Modifier.weight(1f))
-                    IconButton(onClick = { container.workspace.browse(session) }) { Icon(Icons.Outlined.Refresh, "새로고침") }
+                    IconButton(onClick = { container.workspace.browse(session) }) { Icon(AppIcons.Refresh, "새로고침") }
                     Button(onClick = { showCreate = true }, enabled = !state.loading) {
-                        Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
+                        Icon(AppIcons.Add, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("새 저장소 만들기")
                     }
@@ -163,7 +158,7 @@ private fun RepoRow(repo: GitHubRepo, onOpen: () -> Unit) {
         modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
     ) {
         Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Icon(Icons.Outlined.Folder, null, tint = MaterialTheme.colorScheme.primary)
+            Icon(AppIcons.Folder, null, tint = MaterialTheme.colorScheme.primary)
             Column(Modifier.weight(1f)) {
                 Text(repo.ref.fullName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                 repo.description?.takeIf { it.isNotBlank() }?.let { Caption(it) }
