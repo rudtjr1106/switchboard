@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -67,6 +68,7 @@ import io.github.rudtjr1106.switchboard.app.ui.theme.status
 import io.github.rudtjr1106.switchboard.config.ScreenCatalog
 import io.github.rudtjr1106.switchboard.github.ApplyStep
 import io.github.rudtjr1106.switchboard.scanner.FileAction
+import io.github.rudtjr1106.switchboard.scanner.missingWhenSkipped
 import java.awt.Frame
 
 @Composable
@@ -292,24 +294,30 @@ private fun PlanningDialog(progress: PlanningProgress, onCancel: () -> Unit) {
 @Composable
 private fun Plan(model: ProjectSetupModel, step: SetupStep.Plan) {
     val plan = step.plan
+    val writing = plan.files.count { it.path !in step.skipped }
+    val missing = remember(plan, step.skipped) { plan.missingWhenSkipped(step.skipped) }
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Column(Modifier.width(360.dp).fillMaxHeight()) {
-                Text("생성 파일 ${plan.files.size}개", style = MaterialTheme.typography.titleSmall)
+                Text("쓸 파일 ${writing}개 / 전체 ${plan.files.size}개", style = MaterialTheme.typography.titleSmall)
+                Caption("이미 만들어 둔 화면이 있으면 그 파일의 체크만 풀면 돼요. 체크를 푼 파일은 건드리지 않아요.")
                 LazyColumn(Modifier.weight(1f)) {
                     itemsIndexed(plan.files) { index, file ->
                         val selected = index == step.selectedFile
+                        val write = file.path !in step.skipped
                         Row(
                             Modifier.fillMaxWidth()
                                 .clickable { model.updatePlan { it.copy(selectedFile = index) } }
-                                .padding(vertical = 6.dp, horizontal = 6.dp),
+                                .padding(vertical = 2.dp)
+                                .alpha(if (write) 1f else 0.45f),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            Checkbox(checked = write, onCheckedChange = { model.toggleFile(file.path) })
                             if (file.adaptedByAi) {
                                 Text("AI", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.width(22.dp))
                             }
                             Text(
-                                if (file.action == FileAction.MODIFY) "수정" else "새로",
+                                if (file.action == FileAction.MODIFY) "있음" else "새로",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = if (file.action == FileAction.MODIFY) MaterialTheme.status.expired else MaterialTheme.status.live,
                                 modifier = Modifier.width(32.dp),
@@ -333,6 +341,14 @@ private fun Plan(model: ProjectSetupModel, step: SetupStep.Plan) {
                 }
             }
         }
+        if (missing.isNotEmpty()) {
+            NoteBanner(
+                missing.take(3).joinToString("\n") { m ->
+                    "${m.skipped.fileName} 을 빼면 ${m.name} 이 없어요. ${m.neededBy.joinToString(", ") { it.fileName.toString() }} 가 그 이름을 써요"
+                } + if (missing.size > 3) "\n… 외 ${missing.size - 3}개" else "",
+                NoteKind.WARNING,
+            )
+        }
         step.repoBlockedReason?.let { NoteBanner(it, NoteKind.WARNING) }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(checked = step.writeFiles, onCheckedChange = { v -> model.updatePlan { it.copy(writeFiles = v) } })
@@ -347,7 +363,10 @@ private fun Plan(model: ProjectSetupModel, step: SetupStep.Plan) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             TextButton(onClick = model::backToLabeling) { Text("이전") }
             Spacer(Modifier.width(8.dp))
-            Button(onClick = model::run, enabled = step.writeFiles || (step.updateRepo && step.repoBlockedReason == null)) { Text("실행") }
+            Button(
+                onClick = model::run,
+                enabled = (step.writeFiles && writing > 0) || (step.updateRepo && step.repoBlockedReason == null),
+            ) { Text("실행") }
         }
     }
 }

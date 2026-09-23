@@ -304,6 +304,13 @@ class GuideScreenshotTest {
         awaitStep<SetupStep.Plan>(model)
         render("setup-4-plan") { screen() }
 
+        // 이미 자기 안내 화면이 있는 팀은 그 파일만 체크를 풀면 된다
+        val hostPath = (model.state.value as SetupStep.Plan).plan.files.first { it.path.fileName.toString() == "RemoteNoticeHost.kt" }.path
+        model.toggleFile(hostPath)
+        assertTrue((model.state.value as SetupStep.Plan).skipped == setOf(hostPath), "이 파일만 빠져야 한다")
+        render("setup-4-plan-skip") { screen() }
+        model.toggleFile(hostPath)
+
         // 저장소 PR 까지 가면 가짜 API 에 기대야 하므로, 파일 쓰기만 켜고 완료 화면(직접 할 일)을 남긴다
         model.updatePlan { it.copy(updateRepo = false, updateReadme = false) }
         model.run()

@@ -57,6 +57,24 @@ class GitHubRepoBootstrapper(
             )
         }
         throw e
+    } catch (e: GitHubException.Forbidden) {
+        // 조직은 막히는 이유가 두 가지다. 둘 다 사용자가 직접 풀 수 있으니 무엇을 해야 하는지 말해 준다
+        if (request.owner.type != OwnerType.ORGANIZATION) throw e
+        throw GitHubException.Forbidden(orgCreateHint(request.owner.login, e.apiMessage))
+    } catch (e: GitHubException.NotFound) {
+        // 조직에 접근 권한이 없는 토큰에는 조직이 없는 것처럼 보인다 (GitHub 는 404 로 답한다)
+        if (request.owner.type != OwnerType.ORGANIZATION) throw e
+        throw GitHubException.Forbidden(orgCreateHint(request.owner.login, null))
+    }
+
+    /** 조직에 저장소를 만들지 못했을 때, 무엇을 하면 되는지 */
+    private fun orgCreateHint(org: String, apiMessage: String?): String = buildString {
+        append("$org 조직에 저장소를 만들지 못했어요.")
+        if (!apiMessage.isNullOrBlank()) append(" (GitHub: $apiMessage)")
+        append(" 아래를 확인해 주세요.\n")
+        append("1. 조직 설정에서 이 앱(Switchboard)의 접근을 승인했는지 — github.com/settings/connections 에서 요청할 수 있어요\n")
+        append("2. 조직이 멤버에게 공개 저장소 만들기를 허용하는지 (Settings › Member privileges)\n")
+        append("승인이 어려우면 조직 관리자가 저장소를 만든 뒤 여기서 열어서 쓰셔도 돼요.")
     }
 
     private suspend fun commitFiles(ref: RepoRef, branch: String, files: Map<String, String>) {

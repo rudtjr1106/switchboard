@@ -12,10 +12,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -31,10 +31,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import io.github.rudtjr1106.switchboard.app.BuildInfo
 import io.github.rudtjr1106.switchboard.app.di.AppContainer
+import io.github.rudtjr1106.switchboard.app.platform.DesktopActions
 import io.github.rudtjr1106.switchboard.app.session.SessionState
-import io.github.rudtjr1106.switchboard.app.ui.components.DialogHeader
 import io.github.rudtjr1106.switchboard.app.ui.components.Caption
+import io.github.rudtjr1106.switchboard.app.ui.components.DialogHeader
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteBanner
 import io.github.rudtjr1106.switchboard.app.ui.components.NoteKind
 import io.github.rudtjr1106.switchboard.app.ui.components.StepRow
@@ -69,6 +71,9 @@ fun CreateRepoDialog(container: AppContainer, session: SessionState.SignedIn, ow
     }
 }
 
+/** 이 OAuth 앱이 어떤 조직에 접근할 수 있는지 사용자가 직접 켜는 GitHub 설정 */
+private val APP_ACCESS_URL = "https://github.com/settings/connections/applications/${BuildInfo.GITHUB_CLIENT_ID}"
+
 @Composable
 private fun FormContent(flow: CreateRepoFlow, form: CreateRepoState.Form, owners: List<GitHubOwner>, onClose: () -> Unit) {
     var ownerMenu by remember { mutableStateOf(false) }
@@ -87,9 +92,17 @@ private fun FormContent(flow: CreateRepoFlow, form: CreateRepoState.Form, owners
         )
         DropdownMenu(expanded = ownerMenu, onDismissRequest = { ownerMenu = false }) {
             owners.forEach { owner ->
-                DropdownMenuItem(text = { Text(owner.login) }, onClick = { flow.update { it.copy(owner = owner) }; ownerMenu = false })
+                DropdownMenuItem(
+                    text = { Text(owner.login + if (owner.type == OwnerType.ORGANIZATION) "  (조직)" else "") },
+                    onClick = { flow.update { it.copy(owner = owner) }; ownerMenu = false },
+                )
             }
         }
+    }
+    // 조직에 만들려면 그 조직이 이 앱의 접근을 승인해야 목록에 뜬다. 안 보이는 이유를 여기서 바로 알려 준다
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Caption("조직이 안 보이나요? 조직이 이 앱의 접근을 승인해야 보여요.")
+        TextButton(onClick = { DesktopActions.openUrl(APP_ACCESS_URL) }) { Text("승인 설정 열기") }
     }
     OutlinedTextField(
         value = form.name,

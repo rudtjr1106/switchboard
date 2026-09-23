@@ -175,4 +175,36 @@ class GitHubRepoBootstrapperTest {
 
         assertEquals("POST /orgs/acme/repos", server.calls().first())
     }
+
+    // ---- 조직에 만들기 ----
+
+    private val orgRequest = request.copy(owner = GitHubOwner("acme-org", OwnerType.ORGANIZATION))
+
+    /** 조직이 이 앱의 접근을 승인하지 않으면 GitHub 는 403 으로 답한다. 무엇을 하면 되는지 알려 줘야 한다 */
+    @Test
+    fun `조직 저장소 생성이 403 이면 승인과 권한을 안내한다`() = runTest {
+        server.on(HttpMethod.Post, "/orgs/acme-org/repos", HttpStatusCode.Forbidden, """{"message":"Resource not accessible by integration"}""")
+        val failure = assertFailsWith<GitHubException.Forbidden> { bootstrapper().bootstrap(orgRequest) { snapshots += it } }
+        val message = failure.message.orEmpty()
+        assertTrue("acme-org" in message, message)
+        assertTrue("승인" in message, message)
+        assertTrue("Member privileges" in message, message)
+        assertTrue("Resource not accessible by integration" in message, "GitHub 가 준 이유도 남겨야 한다: $message")
+    }
+
+    /** 접근 권한이 없는 토큰에는 조직이 아예 없는 것처럼 404 로 보인다 */
+    @Test
+    fun `조직 저장소 생성이 404 여도 같은 안내를 한다`() = runTest {
+        server.on(HttpMethod.Post, "/orgs/acme-org/repos", HttpStatusCode.NotFound, """{"message":"Not Found"}""")
+        val failure = assertFailsWith<GitHubException.Forbidden> { bootstrapper().bootstrap(orgRequest) { snapshots += it } }
+        assertTrue("acme-org" in failure.message.orEmpty(), failure.message.orEmpty())
+    }
+
+    /** 개인 계정의 403 은 그대로 둔다. 조직 안내를 붙이면 엉뚱해진다 */
+    @Test
+    fun `개인 계정의 403 은 조직 안내를 붙이지 않는다`() = runTest {
+        server.on(HttpMethod.Post, "/user/repos", HttpStatusCode.Forbidden, """{"message":"Nope"}""")
+        val failure = assertFailsWith<GitHubException.Forbidden> { bootstrapper().bootstrap(request) { snapshots += it } }
+        assertFalse("Member privileges" in failure.message.orEmpty(), failure.message.orEmpty())
+    }
 }

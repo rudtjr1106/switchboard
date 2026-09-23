@@ -16,6 +16,7 @@ import io.github.rudtjr1106.switchboard.github.ApplyProgress
 import io.github.rudtjr1106.switchboard.github.GitHubException
 import io.github.rudtjr1106.switchboard.scanner.AndroidProject
 import io.github.rudtjr1106.switchboard.scanner.AndroidProjectScanner
+import io.github.rudtjr1106.switchboard.scanner.FileAction
 import io.github.rudtjr1106.switchboard.scanner.IntegrationGenerator
 import io.github.rudtjr1106.switchboard.scanner.IntegrationPlan
 import io.github.rudtjr1106.switchboard.scanner.IntegrationTarget
@@ -59,6 +60,8 @@ sealed interface SetupStep {
         val screens: List<ScreenInfo>,
         val plan: IntegrationPlan,
         val writeFiles: Boolean = true,
+        /** 쓰지 않고 그대로 둘 파일. 이미 자기 화면을 만들어 둔 프로젝트를 위해 둔다 */
+        val skipped: Set<Path> = emptySet(),
         val updateRepo: Boolean,
         val updateReadme: Boolean,
         val repoBlockedReason: String?,
@@ -207,6 +210,8 @@ class ProjectSetupModel(
                     project = labeling.project,
                     screens = labeling.screens,
                     plan = plan,
+                    // 프로젝트에 이미 있는 파일은 기본으로 빼 둔다. 직접 만든 화면을 말없이 덮어쓰면 안 된다
+                    skipped = plan.files.filter { it.action == FileAction.MODIFY }.map { it.path }.toSet(),
                     updateRepo = blocked == null,
                     updateReadme = false,
                     repoBlockedReason = blocked,
@@ -256,6 +261,21 @@ class ProjectSetupModel(
         _state.update { step -> (step as? SetupStep.Labeling)?.copy(planning = progress) ?: step }
     }
 
+    /**
+     * 파일 하나를 쓸지 말지 뒤집는다
+     *
+     * Path 는 Iterable<Path> 라서 `집합 + 경로` 를 쓰면 경로가 조각(app, src, main…)으로 들어간다. 그래서 직접 넣고 뺀다.
+     */
+    fun toggleFile(path: Path) {
+        _state.update { step ->
+            (step as? SetupStep.Plan)?.let { plan ->
+                val next = plan.skipped.toMutableSet()
+                if (!next.remove(path)) next.add(path)
+                plan.copy(skipped = next)
+            } ?: step
+        }
+    }
+
     fun updatePlan(transform: (SetupStep.Plan) -> SetupStep.Plan) {
         _state.update { step -> (step as? SetupStep.Plan)?.let(transform) ?: step }
     }
@@ -272,10 +292,11 @@ class ProjectSetupModel(
             var prUrl: String? = null
             var note: String? = null
             try {
-                if (plan.writeFiles) {
+                val kept = plan.plan.files.filterNot { it.path in plan.skipped }
+                if (plan.writeFiles && kept.isNotEmpty()) {
                     _state.value = SetupStep.Running(null, "프로젝트에 파일을 쓰는 중…")
-                    withContext(Dispatchers.IO) { IntegrationWriter.write(plan.project.root, plan.plan) }
-                    written += plan.plan.files.map { it.path }
+                    withContext(Dispatchers.IO) { IntegrationWriter.write(plan.project.root, plan.plan.copy(files = kept)) }
+                    written += kept.map { it.path }
                 }
                 if (plan.updateRepo && plan.repoBlockedReason == null) {
                     _state.value = SetupStep.Running(ApplyProgress(), "저장소에 화면 목록을 올리는 중…")
