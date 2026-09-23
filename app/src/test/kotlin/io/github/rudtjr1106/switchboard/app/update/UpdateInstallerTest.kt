@@ -121,6 +121,24 @@ class ChecksumAndScriptTest {
         )
     }
 
+    /** JDK 원문("Failed to exec spawn helper")은 사용자에게 아무 의미가 없다 */
+    @Test
+    fun `프로그램을 띄우지 못하면 무엇을 해야 하는지 알려 준다`() {
+        val jdkError = java.io.IOException(
+            "Cannot run program \"hdiutil\": Failed to exec spawn helper: pid: 85836, exit code: 1",
+        )
+        val message = UpdateInstaller.spawnFailureMessage("hdiutil", jdkError)
+        assertTrue("릴리즈에서 받은 앱" in message, message)
+        assertTrue("Finder" in message, message)
+        assertFalse("spawn helper" in message, "JDK 원문을 그대로 보여 주면 안 된다: $message")
+    }
+
+    @Test
+    fun `다른 이유로 실패하면 원래 메시지를 남긴다`() {
+        val message = UpdateInstaller.spawnFailureMessage("hdiutil", java.io.IOException("Permission denied"))
+        assertTrue("Permission denied" in message, message)
+    }
+
     @Test
     fun `윈도우 교체 스크립트는 앱이 꺼진 뒤 폴더를 바꾸고 다시 띄운다`() {
         val script = UpdateInstaller.windowsSwapScript(

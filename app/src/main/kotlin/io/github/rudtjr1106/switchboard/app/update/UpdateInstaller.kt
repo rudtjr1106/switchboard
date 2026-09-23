@@ -14,8 +14,8 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentLength
 import io.ktor.utils.io.readAvailable
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import java.awt.Desktop
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -26,6 +26,8 @@ import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
 import kotlin.io.path.name
 import kotlin.system.exitProcess
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private val logger = KotlinLogging.logger {}
 
@@ -127,7 +129,13 @@ class UpdateInstaller(
 
     /** DMG 를 열어 안의 앱을 검사한 뒤, 지금 앱 번들과 통째로 바꾼다 */
     private fun applyMac(dmg: Path, bundle: Path, onStep: (InstallStep) -> Unit) {
-        val mount = attach(dmg)
+        val mount = try {
+            attach(dmg)
+        } catch (e: UpdateFailed) {
+            // 서명이 온전하지 않은 빌드(개발 중 만든 것)는 macOS 가 도우미 프로그램 실행을 막는다
+            revealInFinder(dmg)
+            throw e
+        }
         try {
             val source = Files.list(mount).use { paths ->
                 paths.filter { it.name.endsWith(".app") }.findFirst().orElse(null)
@@ -244,7 +252,11 @@ class UpdateInstaller(
     }
 
     private fun exec(vararg command: String): String {
-        val process = ProcessBuilder(*command).redirectErrorStream(true).start()
+        val process = try {
+            ProcessBuilder(*command).redirectErrorStream(true).start()
+        } catch (e: IOException) {
+            throw UpdateFailed(spawnFailureMessage(command.first(), e), e)
+        }
         val output = process.inputStream.bufferedReader().readText()
         val code = process.waitFor()
         if (code != 0) throw UpdateFailed("${command.first()} 이(가) 실패했어요 (코드 $code)\n${output.take(400)}")
@@ -264,7 +276,29 @@ class UpdateInstaller(
         return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
+    /** 내려받은 파일을 Finder 로 열어 준다. 프로그램을 띄우지 못할 때 남는 마지막 방법 */
+    private fun revealInFinder(file: Path) {
+        runCatching { Desktop.getDesktop().open(file.parent.toFile()) }
+            .onFailure { logger.warn(it) { "Finder 로 열지 못했어요: $file" } }
+    }
+
     companion object {
+
+        /**
+         * 프로그램을 띄우지 못했을 때 사람이 읽을 이유
+         *
+         * macOS 는 서명이 ad-hoc 인 앱이 JDK 의 도우미(jspawnhelper)를 실행하는 것을 막는다. 개발 중 만든 빌드에서만
+         * 일어나고 릴리즈로 받은 앱에서는 나지 않는다. JDK 가 주는 원문은 사용자에게 아무 의미가 없어 바꿔 준다.
+         */
+        fun spawnFailureMessage(program: String, error: Throwable): String {
+            val detail = error.message.orEmpty()
+            return if ("spawn helper" in detail || "Cannot run program" in detail) {
+                "이 빌드는 macOS 가 $program 실행을 막아 앱 안에서 업데이트할 수 없어요. " +
+                    "릴리즈에서 받은 앱으로 실행해 주세요. 내려받은 파일은 Finder 로 열어 뒀어요."
+            } else {
+                "$program 을(를) 실행하지 못했어요: $detail"
+            }
+        }
         private const val EXE = "${InstallLocation.EXECUTABLE}.exe"
         private const val BUFFER_SIZE = 1 shl 16
         private const val PROGRESS_STEP = 1L shl 20
