@@ -13,6 +13,7 @@ import io.github.rudtjr1106.switchboard.app.platform.AppPaths
 import io.github.rudtjr1106.switchboard.app.session.SessionManager
 import io.github.rudtjr1106.switchboard.app.settings.SettingsStore
 import io.github.rudtjr1106.switchboard.app.update.UpdateChecker
+import io.github.rudtjr1106.switchboard.app.update.UpdateInstaller
 import io.github.rudtjr1106.switchboard.app.workspace.WorkspaceManager
 import io.github.rudtjr1106.switchboard.github.DefaultGitHubClientFactory
 import io.github.rudtjr1106.switchboard.github.DeviceFlowAuthenticator
@@ -53,7 +54,8 @@ val appModule = module {
     }
     single { SessionManager(get(), get(), get(), get(), get(), get()) }
     single { WorkspaceManager(get(), get(), get()) }
-    single { UpdateChecker(get(), get()) }
+    single { UpdateInstaller(get()) }
+    single { UpdateChecker(get(), get(), get()) }
 
     single<ModelStore> { FileModelStore(AppPaths.modelsDir, get()) }
     single<LlmEngine> { LlamaCppEngine() }

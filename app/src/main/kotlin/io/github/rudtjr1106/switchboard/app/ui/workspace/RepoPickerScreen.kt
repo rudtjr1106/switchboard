@@ -21,12 +21,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,7 +51,9 @@ import io.github.rudtjr1106.switchboard.app.ui.icons.AppIcons
 import io.github.rudtjr1106.switchboard.app.ui.settings.LogoutDialog
 import io.github.rudtjr1106.switchboard.app.ui.theme.Dimens
 import io.github.rudtjr1106.switchboard.app.update.AvailableUpdate
+import io.github.rudtjr1106.switchboard.app.update.InstallStep
 import io.github.rudtjr1106.switchboard.app.update.UpdateChecker
+import io.github.rudtjr1106.switchboard.app.update.UpdateInstallState
 import io.github.rudtjr1106.switchboard.app.workspace.WorkspaceState
 import io.github.rudtjr1106.switchboard.github.GitHubRepo
 import io.github.rudtjr1106.switchboard.github.RepoRef
@@ -171,12 +175,66 @@ private fun RepoRow(repo: GitHubRepo, onOpen: () -> Unit) {
 
 @Composable
 fun UpdateBanner(update: AvailableUpdate, updater: UpdateChecker) {
+    val install by updater.install.collectAsState()
     Surface(color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("${AppPaths.DISPLAY_NAME} ${update.version} 버전이 나왔어요.", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-            TextButton(onClick = { updater.skip(update) }) { Text("이 버전 건너뛰기") }
-            TextButton(onClick = { DesktopActions.openUrl(update.release.htmlUrl) }) { Text("릴리즈 노트") }
-            Button(onClick = { DesktopActions.openUrl(update.downloadUrl); updater.dismiss() }) { Text("내려받기") }
+        Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "${AppPaths.DISPLAY_NAME} ${update.version} 버전이 나왔어요.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                val working = install is UpdateInstallState.Working
+                if (!working) {
+                    TextButton(onClick = { updater.skip(update) }) { Text("이 버전 건너뛰기") }
+                    TextButton(onClick = { DesktopActions.openUrl(update.release.htmlUrl) }) { Text("릴리즈 노트") }
+                }
+                if (updater.canInstall) {
+                    Button(onClick = { updater.install(update) }, enabled = !working) { Text("지금 업데이트") }
+                } else {
+                    Button(onClick = { DesktopActions.openUrl(update.downloadUrl); updater.dismiss() }) { Text("내려받기") }
+                }
+            }
+            when (val state = install) {
+                is UpdateInstallState.Working -> InstallProgress(state.step)
+                is UpdateInstallState.Failed -> Row(
+                    Modifier.padding(top = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Caption(state.message, color = MaterialTheme.colorScheme.error)
+                    TextButton(onClick = { updater.clearInstallResult(); DesktopActions.openUrl(update.downloadUrl) }) {
+                        Text("브라우저로 내려받기")
+                    }
+                }
+                UpdateInstallState.Idle -> Unit
+            }
+        }
+    }
+}
+
+/** 내려받기는 진행률로, 나머지 단계는 글로 알려 준다 */
+@Composable
+private fun InstallProgress(step: InstallStep) {
+    Column(Modifier.padding(top = 6.dp, bottom = 2.dp)) {
+        val label = when (step) {
+            is InstallStep.Downloading ->
+                if (step.total > 0) {
+                    "내려받는 중… ${step.received / 1024 / 1024}MB / ${step.total / 1024 / 1024}MB"
+                } else {
+                    "내려받는 중…"
+                }
+            InstallStep.Verifying -> "서명을 확인하는 중…"
+            InstallStep.Applying -> "새 버전으로 바꾸는 중…"
+            InstallStep.Restarting -> "앱을 다시 시작하는 중…"
+        }
+        Caption(label)
+        val fraction = (step as? InstallStep.Downloading)?.takeIf { it.total > 0 }
+            ?.let { it.received.toFloat() / it.total }
+        if (fraction != null) {
+            LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+        } else {
+            LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 4.dp))
         }
     }
 }

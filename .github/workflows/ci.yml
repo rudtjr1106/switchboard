@@ -28,7 +28,7 @@ jobs:
       # Windows 는 MSI(WiX)까지 만들어 본다. 한글 이름처럼 설치 파일 단계에서만 나는 문제를 미리 잡는다
       - name: MSI 만들기
         if: runner.os == 'Windows'
-        run: ./gradlew :app:packageMsi --console=plain
+        run: ./gradlew :app:packageWindowsZip --console=plain
       - name: jpackage 로그
         if: failure()
         shell: bash

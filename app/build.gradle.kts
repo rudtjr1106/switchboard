@@ -244,6 +244,24 @@ val trimNativeLibraries by tasks.registering {
     }
 }
 
+/**
+ * Windows 배포본. 설치 프로그램 없이 풀어서 바로 쓰는 zip
+ *
+ * MSI 는 Windows Installer 를 거쳐 설치가 오래 걸리고, 제자리 업데이트도 msiexec 를 다시 태워야 한다.
+ * zip 은 압축만 풀면 끝이고, 앱이 스스로 폴더를 바꿔 끼우는 업데이트(UpdateInstaller)도 그대로 된다.
+ */
+val packageWindowsZip by tasks.registering(Zip::class) {
+    group = "compose desktop"
+    description = "Windows 무설치 zip"
+    dependsOn(trimNativeLibraries)
+    onlyIf { System.getProperty("os.name").lowercase().contains("win") }
+    from(layout.buildDirectory.dir("compose/binaries/main/app/Switchboard"))
+    // zip 을 풀면 Switchboard 폴더 하나가 나오게 한다
+    into("Switchboard")
+    archiveFileName.set("Switchboard-windows.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("compose/binaries/main/zip"))
+}
+
 // 설치 파일을 만들기 전에 네이티브를 정리한다 (macOS 는 packageMacDmg 가 직접 순서를 잡는다)
 tasks.matching { it.name in setOf("packageMsi", "packageExe", "packageDeb") }.configureEach {
     dependsOn(trimNativeLibraries)

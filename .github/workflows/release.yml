@@ -22,8 +22,8 @@ jobs:
             task: packageMacDmg
             glob: app/build/compose/binaries/main/dmg/*.dmg
           - os: windows-latest
-            task: packageMsi
-            glob: app/build/compose/binaries/main/msi/*.msi
+            task: packageWindowsZip
+            glob: app/build/compose/binaries/main/zip/*.zip
     env:
       MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
     steps:
@@ -107,10 +107,13 @@ jobs:
         run: |
           ls -R installers
           mv installers/*.dmg installers/Switchboard.dmg
-          mv installers/*.msi installers/Switchboard.msi
+          mv installers/*.zip installers/Switchboard-windows.zip
+          # 앱이 zip 을 받아 스스로 설치하기 전에 이 값으로 무결성을 확인한다 (Windows 빌드는 서명이 없다)
+          cd installers && sha256sum Switchboard.dmg Switchboard-windows.zip > SHA256SUMS.txt && cat SHA256SUMS.txt
       - uses: softprops/action-gh-release@v2
         with:
           files: |
             installers/Switchboard.dmg
-            installers/Switchboard.msi
+            installers/Switchboard-windows.zip
+            installers/SHA256SUMS.txt
           generate_release_notes: true

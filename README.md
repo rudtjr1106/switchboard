@@ -8,7 +8,7 @@
 
 **Android 원격 설정(remote config) 편집기 · macOS / Windows**
 
-[**최신 버전 내려받기**](https://github.com/rudtjr1106/switchboard/releases/latest) · macOS: `Switchboard.dmg` · Windows: `Switchboard.msi`
+[**최신 버전 내려받기**](https://github.com/rudtjr1106/switchboard/releases/latest) · macOS: `Switchboard.dmg` · Windows: `Switchboard-windows.zip`
 
 </div>
 
@@ -37,8 +37,8 @@
 
 ## 설치
 
-1. [Releases](https://github.com/rudtjr1106/switchboard/releases/latest) 에서 `Switchboard.dmg`(macOS) 또는 `Switchboard.msi`(Windows)를 받습니다. macOS 는 `스위치보드.app` 으로 설치되고, Windows 는 시작 메뉴에 `Switchboard` 로 보입니다
-2. macOS: 열린 창에서 앱을 `Applications` 로 끌어다 놓습니다. Windows: MSI 를 실행합니다
+1. [Releases](https://github.com/rudtjr1106/switchboard/releases/latest) 에서 `Switchboard.dmg`(macOS) 또는 `Switchboard-windows.zip`(Windows)을 받습니다
+2. macOS: 열린 창에서 `스위치보드.app` 을 `Applications` 로 끌어다 놓습니다. Windows: zip 을 원하는 곳에 풀고 `Switchboard.exe` 를 실행합니다 (설치 과정이 없습니다)
 3. 처음 켜면 GitHub 로그인 화면이 나옵니다
 
 앱은 켜질 때 새 릴리즈가 있는지 확인하고 위쪽에 알림 띠를 띄웁니다. JVM 이 함께 들어 있어 따로 설치할 것은 없습니다.
@@ -95,7 +95,7 @@ Kotlin 2.4 · Compose Multiplatform 1.12 (Desktop) · Gradle 9. JDK 는 툴체�
 ./gradlew :app:run            # 실행
 ./gradlew test                # 전체 테스트
 ./gradlew :app:packageMacDmg  # macOS 설치 파일 (macOS 에서만, 앱 이름 스위치보드.app)
-./gradlew :app:packageMsi     # Windows 설치 파일 (Windows 에서만)
+./gradlew :app:packageWindowsZip  # Windows 무설치 zip (Windows 에서만)
 ```
 
 | 모듈 | 역할 |
@@ -138,7 +138,7 @@ Gemma 3 1B 로 잰 결과 (M1 16GB):
 
 - macOS `codesign` 은 실행 파일 이름이 한글이면 서명하지 못합니다. 그래서 실행 파일은 `Switchboard` 로 두고, `packageMacDmg` 가 서명된 번들을 `스위치보드.app` 폴더 이름으로 담습니다. 폴더 이름은 서명에 들어가지 않아 서명이 유지됩니다
 - 메뉴 막대·Dock 이름은 `dockName`(`-Xdock:name`)으로 정합니다
-- Windows 는 시작 메뉴·설치 폴더가 영문 `Switchboard` 입니다. WiX 3 로 만드는 MSI 는 기본 코드 페이지(1252)라 한글 제품 이름을 담지 못합니다(LGHT0311). 앱 창 제목과 메뉴는 스위치보드로 보입니다
+- Windows 는 실행 파일·폴더가 영문 `Switchboard` 입니다. 앱 창 제목과 메뉴는 스위치보드로 보입니다
 
 ### 브랜드 이미지
 
@@ -162,7 +162,7 @@ Gemma 3 1B 로 잰 결과 (M1 16GB):
 
 1. `gradle.properties` 의 `switchboard.version` 을 올려 `main` 에 머지합니다
 2. 같은 버전으로 태그를 푸시합니다: `git tag v1.2.0 && git push origin v1.2.0`
-3. `release.yml` 이 macOS 와 Windows 러너에서 설치 파일을 만들어 릴리즈에 `Switchboard.dmg` · `Switchboard.msi` 로 붙입니다
+3. `release.yml` 이 macOS 와 Windows 러너에서 만들어 릴리즈에 `Switchboard.dmg` · `Switchboard-windows.zip` · `SHA256SUMS.txt` 를 붙입니다
 
 ### macOS 서명·공증
 
@@ -201,9 +201,19 @@ base64 -i ~/Desktop/switchboard.p12 | pbcopy   # 붙여넣고 나서 .p12 파일
 
 워크플로는 러너에서 임시 키체인을 만들어 인증서를 넣고, `notarytool store-credentials` 로 그 키체인에 공증 프로필을 저장한 뒤 `packageMacDmg` 를 돌리고, 끝나면 키체인을 지웁니다. 빌드 로그에는 신원 이름만 남고 암호는 남지 않습니다.
 
+## 업데이트
+
+앱이 뜰 때 새 릴리즈를 확인하고, 있으면 위쪽에 띠로 알립니다. **지금 업데이트** 를 누르면 브라우저를 열지 않고 앱이 직접 받아서 바꿔 끼운 뒤 다시 시작합니다.
+
+- macOS: 받은 DMG 안의 앱을 `codesign` · `spctl` 로 검사해 **Apple 공증을 통과했고 지금 앱과 같은 팀이 서명한** 것만 설치합니다. 번들을 통째로 바꾸므로 서명과 공증 티켓이 그대로 유지됩니다
+- Windows: zip 의 SHA-256 을 릴리즈의 `SHA256SUMS.txt` 와 맞춰 본 뒤, 앱이 꺼지기를 기다렸다가 폴더를 바꿔 끼우는 스크립트를 띄웁니다 (도는 중인 `Switchboard.exe` 는 자기 자신을 지울 수 없기 때문입니다)
+- 개발 중 `./gradlew :app:run` 으로 띄우면 설치된 자리가 없어 버튼이 **내려받기**(브라우저)로 바뀝니다
+
+앱 안의 jar 만 바꾸는 델타 방식은 쓰지 않습니다. 서명 봉인(CodeResources)이 깨져 macOS 가 앱을 더 이상 검증하지 못하게 됩니다.
+
 ## 알려진 제약
 
-- Windows 설치 파일은 서명하지 않아 처음 열 때 SmartScreen 경고가 뜹니다 (macOS 는 서명·공증합니다)
+- Windows 배포본은 서명하지 않아 처음 열 때 SmartScreen 경고가 뜹니다 (macOS 는 서명·공증합니다). 대신 릴리즈의 `SHA256SUMS.txt` 로 파일이 바뀌지 않았는지 확인할 수 있고, 앱의 자동 업데이트도 이 값을 맞춰 본 뒤에만 설치합니다
 - Windows 빌드는 GitHub Actions 의 `windows-latest` 러너에서 만듭니다. 이 저장소는 macOS 에서 개발됐고 Windows 실행은 CI 로만 검증합니다
 - java-llama.cpp 4.2.0 은 모델을 내려도 메모리를 완전히 돌려주지 않습니다 (4B → 1B 전환 시 이전 모델이 상주). 모델을 바꾸면 앱을 다시 켜는 편이 안전합니다
 - 번들된 llama.cpp(b4916)가 아는 아키텍처만 씁니다. Gemma 3 는 되고 Qwen3 는 로드되지 않습니다
