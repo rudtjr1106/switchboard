@@ -26,6 +26,9 @@ import io.github.rudtjr1106.switchboard.app.ui.workspace.CreateRepoDialog
 import io.github.rudtjr1106.switchboard.app.ui.workspace.RepoPickerScreen
 import io.github.rudtjr1106.switchboard.app.workspace.WorkspaceState
 import io.github.rudtjr1106.switchboard.config.Fixtures
+import io.github.rudtjr1106.switchboard.config.SchemaRenderer
+import io.github.rudtjr1106.switchboard.config.ValueSpec
+import io.github.rudtjr1106.switchboard.config.ValueType
 import io.github.rudtjr1106.switchboard.github.GitHubOwner
 import io.github.rudtjr1106.switchboard.github.GitHubRepo
 import io.github.rudtjr1106.switchboard.github.GitHubToken
@@ -52,6 +55,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.JsonPrimitive
 import org.jetbrains.skia.EncodedImageFormat
 
 /**
@@ -316,6 +320,36 @@ class GuideScreenshotTest {
         model.run()
         awaitStep<SetupStep.Done>(model)
         render("setup-5-done") { screen() }
+    }
+
+    @Test
+    fun `free key-value screen`() = runTest {
+        val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
+        val api = FakeGitHubApi(user)
+        val specs = listOf(
+            ValueSpec("eventBannerOn", ValueType.BOOLEAN, "이벤트 배너", default = JsonPrimitive(true)),
+            ValueSpec(
+                "maxUploadCount", ValueType.INTEGER, "한 번에 올릴 수 있는 사진",
+                description = "모임 후기에 올릴 수 있는 사진 개수", default = JsonPrimitive(5), minimum = 1.0, maximum = 10.0,
+            ),
+            ValueSpec(
+                "homeTabOrder", ValueType.STRING, "홈 탭 정렬",
+                default = JsonPrimitive("recent"), options = listOf("recent", "popular"),
+            ),
+            ValueSpec("noticeUrl", ValueType.STRING, "공지 링크", default = JsonPrimitive(""), maxLength = 120),
+        )
+        val schemaText = SchemaRenderer.withValues(Fixtures.androidSchemaText, specs)
+        val configText = Fixtures.androidConfigText.trimEnd().removeSuffix("}").trimEnd().removeSuffix(",") +
+            ",\n  \"values\": {\n    \"eventBannerOn\": true,\n    \"maxUploadCount\": 3,\n" +
+            "    \"homeTabOrder\": \"popular\",\n    \"noticeUrl\": \"https://umc.app/notice\"\n  }\n}\n"
+        val repo = FakeConfigRepository(umcRef, configText = configText, schemaText = schemaText)
+        val container = UiFakes.container(scope, api) { repo }
+        val session = sessionFor(api)
+        val editor = EditorModel(repo, scope) { LocalDate.of(2026, 9, 22) }
+        editor.load()
+        editor.select(Selection.Values)
+        val gitHubRepo = GitHubRepo(umcRef, umcRef.htmlUrl, permissions = RepoPermissions(push = true))
+        render("editor-values") { EditorScreen(container, session, editor, gitHubRepo, onOpenSettings = {}, onOpenSetup = {}) }
     }
 
     @Test

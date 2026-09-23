@@ -92,6 +92,7 @@ fun EditorScreen(
                 Box(Modifier.weight(1f).fillMaxHeight()) {
                     when (val selection = state.selection) {
                         Selection.MinimumVersion -> MinimumVersionForm(editor, state)
+                        Selection.Values -> ValuesForm(editor, state)
                         is Selection.NoticeItem -> state.draft.notice(selection.id)?.let { notice ->
                             NoticeForm(container, editor, state, notice)
                         } ?: CenteredMessage("왼쪽에서 항목을 고르세요")

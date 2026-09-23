@@ -45,8 +45,8 @@ fun SidebarPane(editor: EditorModel, state: EditorState, modifier: Modifier = Mo
     val today = LocalDate.now()
     Column(modifier.background(MaterialTheme.colorScheme.surfaceContainerLow)) {
         LazyColumn(Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp)) {
+            item { SectionHeader("앱") }
             if (schema.supportsMinimumVersion) {
-                item { SectionHeader("앱") }
                 item {
                     val selected = state.selection == Selection.MinimumVersion
                     SidebarRow(selected = selected, onClick = { editor.select(Selection.MinimumVersion) }) {
@@ -60,6 +60,22 @@ fun SidebarPane(editor: EditorModel, state: EditorState, modifier: Modifier = Mo
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
+                    }
+                }
+            }
+            // 값은 스키마에 정의가 없어도 들어가서 만들 수 있어야 한다
+            item {
+                val selected = state.selection == Selection.Values
+                SidebarRow(selected = selected, onClick = { editor.select(Selection.Values) }) {
+                    Icon(AppIcons.ToggleOn, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(10.dp))
+                    Column {
+                        Text("값", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            if (state.valueSpecs.isEmpty()) "없음" else "${state.valueSpecs.size}개",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             }

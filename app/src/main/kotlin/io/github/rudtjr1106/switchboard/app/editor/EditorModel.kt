@@ -3,6 +3,7 @@ package io.github.rudtjr1106.switchboard.app.editor
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.rudtjr1106.switchboard.config.AppConfig
 import io.github.rudtjr1106.switchboard.config.Change
+import io.github.rudtjr1106.switchboard.config.ChangeKind
 import io.github.rudtjr1106.switchboard.config.ConfigCodec
 import io.github.rudtjr1106.switchboard.config.ConfigDiff
 import io.github.rudtjr1106.switchboard.config.ConfigFormatException
@@ -10,8 +11,10 @@ import io.github.rudtjr1106.switchboard.config.ConfigSchema
 import io.github.rudtjr1106.switchboard.config.ConfigValidator
 import io.github.rudtjr1106.switchboard.config.Notice
 import io.github.rudtjr1106.switchboard.config.NoticeId
+import io.github.rudtjr1106.switchboard.config.SchemaRenderer
 import io.github.rudtjr1106.switchboard.config.SchemaValidation
 import io.github.rudtjr1106.switchboard.config.ValidationIssue
+import io.github.rudtjr1106.switchboard.config.ValueSpec
 import io.github.rudtjr1106.switchboard.config.templates.RepoTemplates
 import io.github.rudtjr1106.switchboard.github.ApplyProgress
 import io.github.rudtjr1106.switchboard.github.ApplyRequest
@@ -20,6 +23,8 @@ import io.github.rudtjr1106.switchboard.github.ConfigRepository
 import io.github.rudtjr1106.switchboard.github.FileChange
 import io.github.rudtjr1106.switchboard.github.GitHubException
 import io.github.rudtjr1106.switchboard.github.RepoRef
+import java.time.Instant
+import java.time.LocalDate
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,8 +32,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.Instant
-import java.time.LocalDate
+import kotlinx.serialization.json.JsonPrimitive
 
 private val logger = KotlinLogging.logger {}
 
@@ -40,6 +44,7 @@ sealed interface LoadState {
 
 sealed interface Selection {
     data object MinimumVersion : Selection
+    data object Values : Selection
     data class NoticeItem(val id: NoticeId) : Selection
 }
 
@@ -64,6 +69,8 @@ data class EditorState(
     val ref: RepoRef,
     val loadState: LoadState = LoadState.Loading,
     val schema: ConfigSchema? = null,
+    /** 값 정의를 고쳤을 때의 schema.json. null 이면 스키마는 그대로다 */
+    val schemaDraft: ConfigSchema? = null,
     val original: AppConfig = AppConfig(),
     val draft: AppConfig = AppConfig(),
     val loadedAt: Instant? = null,
@@ -72,15 +79,39 @@ data class EditorState(
     val apply: ApplyState? = null,
 ) {
     val isLoaded: Boolean get() = loadState == LoadState.Loaded && schema != null
-    val hasChanges: Boolean get() = !draft.contentEquals(original)
+    val hasChanges: Boolean get() = !draft.contentEquals(original) || schemaDraft != null
     val isApplying: Boolean get() = apply is ApplyState.Running
     val selectedNotice: Notice? get() = (selection as? Selection.NoticeItem)?.let { draft.notice(it.id) }
 
-    val issues: List<ValidationIssue> get() = schema?.let { ConfigValidator(it).validate(draft) }.orEmpty()
+    /** 값 편집에 쓰는 스키마. 정의를 고쳤으면 그 초안 */
+    val effectiveSchema: ConfigSchema? get() = schemaDraft ?: schema
+
+    val valueSpecs: List<ValueSpec> get() = effectiveSchema?.values.orEmpty()
+
+    val hasSchemaChanges: Boolean get() = schemaDraft != null
+
+    val issues: List<ValidationIssue> get() = effectiveSchema?.let { ConfigValidator(it).validate(draft) }.orEmpty()
 
     fun issuesFor(id: NoticeId): List<ValidationIssue> = issues.filter { it.noticeId == id }
 
-    val changes: List<Change> get() = ConfigDiff.between(original, draft)
+    val changes: List<Change> get() = ConfigDiff.between(original, draft) + schemaChanges
+
+    /** 값 정의(schema.json) 변화 */
+    private val schemaChanges: List<Change>
+        get() {
+            val before = schema?.values.orEmpty().associateBy { it.key }
+            val after = schemaDraft?.values?.associateBy { it.key } ?: return emptyList()
+            val changes = mutableListOf<Change>()
+            for ((key, spec) in after) {
+                val old = before[key]
+                when {
+                    old == null -> changes += Change(ChangeKind.ADDED, "값 정의 $key 추가 (${spec.type.label})")
+                    old != spec -> changes += Change(ChangeKind.MODIFIED, "값 정의 $key 수정")
+                }
+            }
+            for (key in before.keys - after.keys) changes += Change(ChangeKind.REMOVED, "값 정의 $key 삭제")
+            return changes
+        }
 
     /** 적용 버튼이 꺼져 있는 이유. null 이면 적용할 수 있다 */
     val applyBlockedReason: String?
@@ -155,6 +186,37 @@ class EditorModel(
         _state.update { it.copy(selection = selection) }
     }
 
+    // ---- 자유 값 ----
+
+    /** 값 하나를 고친다. 기본값과 같아져도 파일에는 남긴다 (다음 사람이 무엇을 정했는지 보이게) */
+    fun setValue(spec: ValueSpec, value: JsonPrimitive) {
+        _state.update { it.copy(draft = it.draft.setValue(spec.key, value)) }
+    }
+
+    /**
+     * 값 정의를 새로 만든다. schema.json 이 함께 바뀌므로 적용할 때 두 파일이 한 PR 로 올라간다
+     *
+     * @return 만들지 못한 이유. null 이면 만들었다
+     */
+    fun addValueSpec(spec: ValueSpec): String? {
+        val state = current
+        val schema = state.effectiveSchema ?: return "스키마를 불러오지 못했어요"
+        if (!ValueSpec.KEY_PATTERN.matches(spec.key)) return "키는 영문 소문자로 시작하고 영문·숫자만 쓸 수 있어요 (예: showEvent)"
+        if (schema.values.any { it.key == spec.key }) return "'${spec.key}' 는 이미 있어요"
+        val updated = ConfigSchema.parse(SchemaRenderer.withValues(schema.text, schema.values + spec))
+        _state.update { it.copy(schemaDraft = updated, selection = Selection.Values) }
+        return null
+    }
+
+    /** 값 정의를 지운다. 설정 파일의 값도 함께 뺀다 */
+    fun removeValueSpec(key: String) {
+        _state.update { state ->
+            val schema = state.effectiveSchema ?: return@update state
+            val updated = ConfigSchema.parse(SchemaRenderer.withValues(schema.text, schema.values.filterNot { it.key == key }))
+            state.copy(schemaDraft = updated, draft = state.draft.removeValue(key))
+        }
+    }
+
     fun addNotice() {
         val notice = Notice()
         _state.update { it.copy(draft = it.draft.add(notice), selection = Selection.NoticeItem(notice.id)) }
@@ -223,8 +285,14 @@ class EditorModel(
             if (confirming.memo.isNotBlank()) append("\n### 메모\n\n").append(confirming.memo.trim()).append('\n')
             append("\n스위치보드에서 적용")
         }
+        val schemaDraft = state.schemaDraft
+        val files = buildList {
+            add(FileChange(RepoTemplates.CONFIG_PATH, ConfigCodec.encode(draft), fileShas[RepoTemplates.CONFIG_PATH]))
+            // 값 정의를 고쳤으면 schema.json 도 같은 PR 로 올린다 (따로 올리면 잠깐 서로 맞지 않는다)
+            if (schemaDraft != null) add(FileChange(RepoTemplates.SCHEMA_PATH, schemaDraft.text, fileShas[RepoTemplates.SCHEMA_PATH]))
+        }
         val request = ApplyRequest(
-            files = listOf(FileChange(RepoTemplates.CONFIG_PATH, ConfigCodec.encode(draft), fileShas[RepoTemplates.CONFIG_PATH])),
+            files = files,
             commitTitle = title,
             pullRequestBody = body,
         )
@@ -236,7 +304,14 @@ class EditorModel(
                 }
                 // main 은 이미 바뀌었으니 배포가 실패해도 원본은 머지 결과로 맞춘다
                 fileShas.putAll(result.fileShas)
-                _state.update { it.copy(original = draft, apply = ApplyState.Finished(lastProgress(), result)) }
+                _state.update {
+                    it.copy(
+                        original = draft,
+                        schema = schemaDraft ?: it.schema,
+                        schemaDraft = null,
+                        apply = ApplyState.Finished(lastProgress(), result),
+                    )
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
