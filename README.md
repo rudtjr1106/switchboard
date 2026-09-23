@@ -8,7 +8,7 @@
 
 **Android 원격 설정(remote config) 편집기 · macOS / Windows**
 
-[**최신 버전 내려받기**](https://github.com/rudtjr1106/switchboard/releases/latest) · macOS: `Switchboard.dmg` · Windows: `Switchboard-windows.zip`
+[**최신 버전 내려받기**](https://github.com/rudtjr1106/switchboard/releases/latest) · [**사용법 (Android 팀)**](docs/사용법.md) · macOS: `Switchboard.dmg` · Windows: `Switchboard-windows.zip`
 
 </div>
 

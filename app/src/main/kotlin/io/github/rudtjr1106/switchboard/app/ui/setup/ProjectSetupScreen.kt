@@ -70,8 +70,18 @@ import io.github.rudtjr1106.switchboard.scanner.FileAction
 import java.awt.Frame
 
 @Composable
-fun ProjectSetupScreen(container: AppContainer, session: SessionState.SignedIn, editor: EditorModel, window: Frame, onBack: () -> Unit) {
-    val model = remember(editor) { ProjectSetupModel(session, editor, container.scanner, container.generator, container.ai, container.settings, container.scope) }
+fun ProjectSetupScreen(
+    container: AppContainer,
+    session: SessionState.SignedIn,
+    editor: EditorModel,
+    // 테스트에서 헤드리스로 그릴 때는 null (폴더 선택 창을 띄우지 않는다)
+    window: Frame?,
+    onBack: () -> Unit,
+    // 화면 스크린샷 테스트가 단계별 상태를 만들어 넣을 수 있게 밖에서도 받는다
+    model: ProjectSetupModel = remember(editor) {
+        ProjectSetupModel(session, editor, container.scanner, container.generator, container.ai, container.settings, container.scope)
+    },
+) {
     val step by model.state.collectAsState()
     val busy = step is SetupStep.Scanning || step is SetupStep.Running || (step as? SetupStep.Labeling)?.planning != null
     // 스캔 결과나 라벨을 고친 뒤 나가면 처음부터 다시 해야 하므로 한 번 묻는다
@@ -131,7 +141,7 @@ private fun Centered(text: String) {
 }
 
 @Composable
-private fun PickFolder(model: ProjectSetupModel, step: SetupStep.PickFolder, window: Frame) {
+private fun PickFolder(model: ProjectSetupModel, step: SetupStep.PickFolder, window: Frame?) {
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Android 프로젝트 폴더(settings.gradle.kts 가 있는 곳)를 고르면 내비게이션 목적지·DI·HTTP 라이브러리를 읽어 연동 코드를 만들어 드려요.", style = MaterialTheme.typography.bodyLarge)
         SectionCard("만들어지는 것") {
@@ -170,12 +180,19 @@ private fun Review(model: ProjectSetupModel, step: SetupStep.Review) {
             if (project.notes.isNotEmpty()) SectionCard("메모") { project.notes.forEach { Caption("• $it") } }
         }
         Column(Modifier.weight(1f)) {
+            // 스키마에 이미 있던 화면도 selected 에 들어 있다. 숫자는 이번에 스캔한 것만 센다
+            val scanned = project.destinations.map { it.name }.toSet()
+            val kept = step.selected.size - step.selected.count { it in scanned }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("schema.json 에 넣을 화면 (${step.selected.size}/${project.destinations.size})", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    "schema.json 에 넣을 화면 (${step.selected.count { it in scanned }}/${project.destinations.size})",
+                    style = MaterialTheme.typography.titleSmall,
+                )
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = { model.selectAll(true) }) { Text("모두") }
                 TextButton(onClick = { model.selectAll(false) }) { Text("없음") }
             }
+            if (kept > 0) Caption("여기 없는 기존 화면 ${kept}개는 그대로 둬요. 체크는 이번에 찾은 화면에만 해당해요.")
             if (project.destinations.isEmpty()) {
                 NoteBanner("내비게이션 목적지를 찾지 못했어요. 라벨 단계에서 화면 이름을 직접 추가할 수는 없으니 스키마의 기존 화면만 유지돼요.", NoteKind.WARNING)
             }

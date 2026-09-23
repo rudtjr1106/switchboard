@@ -55,6 +55,13 @@ object UiFakes {
         scope: CoroutineScope,
         api: GitHubApi,
         settings: SettingsStore = SettingsStore(Files.createTempDirectory("switchboard-ui").resolve("settings.json")),
+        scanner: AndroidProjectScanner = object : AndroidProjectScanner {
+            override suspend fun scan(root: Path): AndroidProject = error("unused")
+        },
+        generator: IntegrationGenerator = object : IntegrationGenerator {
+            override fun plan(project: AndroidProject, target: IntegrationTarget): IntegrationPlan = error("unused")
+        },
+        // 마지막 자리라 `container(scope, api) { repo }` 처럼 뒤에 붙여 줄 수 있다
         repositories: (RepoRef) -> io.github.rudtjr1106.switchboard.github.ConfigRepository = { error("unused") },
     ): AppContainer {
         val factory = FakeClientFactory(api, repositories)
@@ -82,8 +89,8 @@ object UiFakes {
             workspace = WorkspaceManager(settings, factory, scope),
             clientFactory = factory,
             ai = ai,
-            scanner = object : AndroidProjectScanner { override suspend fun scan(root: Path): AndroidProject = error("unused") },
-            generator = object : IntegrationGenerator { override fun plan(project: AndroidProject, target: IntegrationTarget): IntegrationPlan = error("unused") },
+            scanner = scanner,
+            generator = generator,
             updater = UpdateChecker(settings, scope),
         )
     }
