@@ -106,8 +106,12 @@ jobs:
       - name: 파일 이름 고정 (releases/latest/download/... 링크가 늘 최신을 가리키게)
         run: |
           ls -R installers
-          mv installers/*.dmg installers/Switchboard.dmg
-          mv installers/*.zip installers/Switchboard-windows.zip
+          cd installers
+          # DMG 는 한글 버전 이름으로 올라오고, zip 은 이미 최종 이름이다. 같은 이름이면 그대로 둔다
+          rename() { [ "$1" = "$2" ] || mv "$1" "$2"; }
+          rename "$(ls *.dmg)" Switchboard.dmg
+          rename "$(ls *.zip)" Switchboard-windows.zip
+          cd ..
           # 앱이 zip 을 받아 스스로 설치하기 전에 이 값으로 무결성을 확인한다 (Windows 빌드는 서명이 없다)
           cd installers && sha256sum Switchboard.dmg Switchboard-windows.zip > SHA256SUMS.txt && cat SHA256SUMS.txt
       - uses: softprops/action-gh-release@v2
