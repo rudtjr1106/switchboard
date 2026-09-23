@@ -1,6 +1,7 @@
 package io.github.rudtjr1106.switchboard.config
 
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 import java.time.LocalDate
 import java.util.UUID
 
@@ -64,11 +65,26 @@ data class AppConfig(
     /** 강제 업데이트 기준 버전. 스키마가 지원하지 않으면 null, 지원하지만 비어 있으면 "" */
     val minimumVersion: String? = null,
     val notices: List<Notice> = emptyList(),
+    /**
+     * 앱이 읽어가는 자유 값 (`values`). 스키마의 [ValueSpec] 이 규칙을 정한다
+     *
+     * 편집기가 다루지 못하는 모양(목록·객체)이 들어 있어도 그대로 보존하려고 [JsonElement] 로 담는다.
+     */
+    val values: Map<String, JsonElement> = emptyMap(),
     /** `$schema` 값. 편집기 자동완성용이라 그대로 보존한다 */
     val schemaRef: String? = DEFAULT_SCHEMA_REF,
     val extras: Map<String, JsonElement> = emptyMap(),
 ) {
     fun notice(id: NoticeId): Notice? = notices.firstOrNull { it.id == id }
+
+    /** 값 하나. 파일에 없으면 스키마의 기본값 */
+    fun value(spec: ValueSpec): JsonPrimitive = values[spec.key] as? JsonPrimitive ?: spec.default
+
+    fun setValue(key: String, value: JsonPrimitive): AppConfig =
+        copy(values = LinkedHashMap(values).apply { put(key, value) })
+
+    fun removeValue(key: String): AppConfig =
+        copy(values = LinkedHashMap(values).apply { remove(key) })
 
     fun indexOf(id: NoticeId): Int = notices.indexOfFirst { it.id == id }
 
@@ -89,7 +105,7 @@ data class AppConfig(
 
     fun contentEquals(other: AppConfig): Boolean =
         version == other.version && minimumVersion == other.minimumVersion && schemaRef == other.schemaRef &&
-            extras == other.extras && notices.size == other.notices.size &&
+            extras == other.extras && values == other.values && notices.size == other.notices.size &&
             notices.zip(other.notices).all { (a, b) -> a.contentEquals(b) }
 
     companion object {

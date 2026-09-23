@@ -86,6 +86,34 @@ object SchemaRenderer {
         return JsonPretty.print(JsonObject(updated), compactLeaves = true) + "\n"
     }
 
+    /**
+     * 자유 값 정의를 통째로 바꾼 schema.json
+     *
+     * `properties.values` 가 없으면 만들고, 목록이 비면 지운다. 나머지 부분은 건드리지 않는다.
+     */
+    fun withValues(schemaText: String, specs: List<ValueSpec>): String {
+        val root = Json.parseToJsonElement(schemaText).jsonObject
+        val properties = root["properties"]?.jsonObject ?: JsonObject(emptyMap())
+        val updatedProperties = LinkedHashMap(properties)
+        if (specs.isEmpty()) {
+            updatedProperties.remove("values")
+        } else {
+            val definitions = LinkedHashMap<String, kotlinx.serialization.json.JsonElement>()
+            specs.forEach { definitions[it.key] = ValueSpec.render(it) }
+            // 앱이 모르는 키가 와도 무시하도록 additionalProperties 는 열어 둔다
+            updatedProperties["values"] = JsonObject(
+                linkedMapOf(
+                    "type" to JsonPrimitive("object"),
+                    "description" to JsonPrimitive("앱이 읽어가는 자유 값"),
+                    "properties" to JsonObject(definitions),
+                ),
+            )
+        }
+        val updated = LinkedHashMap(root)
+        updated["properties"] = JsonObject(updatedProperties)
+        return JsonPretty.print(JsonObject(updated), compactLeaves = true) + "\n"
+    }
+
     private fun replaceScreenEnum(properties: JsonObject, screens: List<ScreenInfo>): JsonObject =
         properties.replace("notices") { notices ->
             notices.jsonObject.replace("items") { items ->

@@ -29,8 +29,15 @@ class ConfigSchema internal constructor(
     val titleLimit: Int,
     val bodyLimit: Int,
     val catalog: ScreenCatalog,
+    /** `properties.values` 에 정의된 자유 값들. 없으면 빈 목록 */
+    val values: List<ValueSpec> = emptyList(),
 ) {
     val screenIds: List<String> get() = catalog.ids
+
+    /** 편집기가 값 편집을 켤지 */
+    val supportsValues: Boolean get() = values.isNotEmpty()
+
+    fun value(key: String): ValueSpec? = values.firstOrNull { it.key == key }
 
     fun withCatalog(catalog: ScreenCatalog): ConfigSchema = parse(SchemaRenderer.withScreens(text, catalog.screens))
 
@@ -91,6 +98,7 @@ class ConfigSchema internal constructor(
                 titleLimit = titleLimit,
                 bodyLimit = bodyLimit,
                 catalog = ScreenCatalog(screens),
+                values = parseValueSpecs(properties),
             )
         }
 

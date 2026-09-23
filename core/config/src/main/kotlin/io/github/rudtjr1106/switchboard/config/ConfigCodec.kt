@@ -20,7 +20,7 @@ import kotlinx.serialization.json.jsonPrimitive
  */
 object ConfigCodec {
 
-    private val knownRootKeys = setOf("\$schema", "version", "minimumVersion", "notices")
+    private val knownRootKeys = setOf("\$schema", "version", "minimumVersion", "notices", "values")
     private val knownNoticeKeys = setOf("screen", "enabled", "template", "title", "body", "until")
 
     fun decode(text: String, schema: ConfigSchema): AppConfig {
@@ -52,6 +52,7 @@ object ConfigCodec {
             version = version,
             minimumVersion = minimumVersion,
             notices = notices,
+            values = (root["values"] as? JsonObject)?.toMap().orEmpty(),
             schemaRef = root.string("\$schema"),
             extras = root.filterKeys { it !in knownRootKeys },
         )
@@ -64,12 +65,19 @@ object ConfigCodec {
         lines += "  \"version\": ${config.version}"
         config.minimumVersion?.let { lines += "  \"minimumVersion\": ${JsonPretty.quote(it)}" }
         lines += "  \"notices\": " + encodeNotices(config.notices)
+        // 값이 없던 파일은 키를 새로 만들지 않는다 (기존 저장소 파일이 그대로 유지되게)
+        if (config.values.isNotEmpty()) lines += "  \"values\": " + encodeValues(config.values)
         for ((key, value) in config.extras) {
             lines += "  ${JsonPretty.quote(key)}: ${JsonPretty.print(value, compactLeaves = false, indentLevel = 1)}"
         }
         append(lines.joinToString(",\n"))
         append("\n}\n")
     }
+
+    private fun encodeValues(values: Map<String, JsonElement>): String =
+        values.entries.joinToString(separator = ",\n", prefix = "{\n", postfix = "\n  }") { (key, value) ->
+            "    ${JsonPretty.quote(key)}: ${JsonPretty.print(value, compactLeaves = false, indentLevel = 2)}"
+        }
 
     private fun encodeNotices(notices: List<Notice>): String {
         if (notices.isEmpty()) return "[]"

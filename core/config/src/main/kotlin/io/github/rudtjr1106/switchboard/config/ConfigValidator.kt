@@ -1,5 +1,7 @@
 package io.github.rudtjr1106.switchboard.config
 
+import kotlinx.serialization.json.JsonPrimitive
+
 /**
  * 입력하는 즉시 잡아내는 검사. 규칙은 [ConfigSchema] 에서 읽는다
  *
@@ -13,8 +15,37 @@ class ConfigValidator(private val schema: ConfigSchema) {
         val issues = mutableListOf<ValidationIssue>()
         minimumVersionIssue(config.minimumVersion)?.let { issues += it }
         config.notices.forEach { issues += noticeIssues(it) }
+        issues += valueIssues(config)
         return issues
     }
+
+    /**
+     * 자유 값이 스키마에 맞는지
+     *
+     * 스키마에 없는 키는 지우지 않고 알리기만 한다. 다른 사람이 스키마를 고치는 중일 수 있고, 값 자체는 보존해야 한다.
+     */
+    fun valueIssues(config: AppConfig): List<ValidationIssue> {
+        val issues = mutableListOf<ValidationIssue>()
+        for ((key, element) in config.values) {
+            val spec = schema.value(key)
+            if (spec == null) {
+                issues += ValidationIssue(null, "values.$key", "'$key' 는 schema.json 에 없는 값이에요")
+                continue
+            }
+            val primitive = element as? JsonPrimitive
+            if (primitive == null) {
+                issues += ValidationIssue(null, "values.$key", "'$key' 는 편집기가 다루지 못하는 모양이에요")
+                continue
+            }
+            ValueChecks.problem(spec, primitive)?.let {
+                issues += ValidationIssue(null, "values.$key", "${spec.displayLabel}: $it")
+            }
+        }
+        return issues
+    }
+
+    fun valueIssue(spec: ValueSpec, value: JsonPrimitive): ValidationIssue? =
+        ValueChecks.problem(spec, value)?.let { ValidationIssue(null, "values.${spec.key}", it) }
 
     fun minimumVersionIssue(value: String?): ValidationIssue? {
         if (value == null || schema.minimumVersionPattern.matches(value)) return null
