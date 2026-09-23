@@ -3,6 +3,8 @@ package io.github.rudtjr1106.switchboard.scanner
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.rudtjr1106.switchboard.scanner.templates.AppConfigResponseFile
 import io.github.rudtjr1106.switchboard.scanner.templates.GetRemoteNoticesUseCaseFile
+import io.github.rudtjr1106.switchboard.scanner.templates.GetRemoteValuesUseCaseFile
+import io.github.rudtjr1106.switchboard.scanner.templates.RemoteValuesFile
 import io.github.rudtjr1106.switchboard.scanner.templates.HiltRemoteConfigBindModuleFile
 import io.github.rudtjr1106.switchboard.scanner.templates.DaggerModules
 import io.github.rudtjr1106.switchboard.scanner.templates.HiltRemoteConfigModuleFile
@@ -76,6 +78,7 @@ class TemplateIntegrationGenerator : IntegrationGenerator {
             hostHasDefaultViewModel = project.di == DiFramework.HILT || project.di == DiFramework.KOIN ||
                 (project.di == DiFramework.NONE && !layout.layered),
             exampleScreen = project.destinationNames.firstOrNull { it != "Splash" } ?: target.screens.firstOrNull { !it.isAll }?.id ?: "Home",
+            values = target.values,
         )
 
         val files = mutableListOf<GeneratedFile>()
@@ -93,6 +96,11 @@ class TemplateIntegrationGenerator : IntegrationGenerator {
         add(layout.domain, ctx.modelPackage, "RemoteNotice.kt", RemoteNoticeFile.render(ctx))
         add(layout.domain, ctx.repositoryPackage, "RemoteConfigRepository.kt", RemoteConfigRepositoryFile.render(ctx))
         add(layout.domain, ctx.useCasePackage, "GetRemoteNoticesUseCase.kt", GetRemoteNoticesUseCaseFile.render(ctx))
+        if (ctx.values.isNotEmpty()) {
+            add(layout.domain, ctx.modelPackage, "RemoteValues.kt", RemoteValuesFile.render(ctx))
+            add(layout.domain, ctx.useCasePackage, "GetRemoteValuesUseCase.kt", GetRemoteValuesUseCaseFile.render(ctx))
+            notes += "자유 값 ${ctx.values.size}개를 RemoteValues 클래스로 만들었어요. 스키마의 기본값이 박혀 있어 설정을 못 받아도 같은 값으로 동작해요"
+        }
         add(layout.data, ctx.dataPackage, "RemoteConfigApi.kt", RemoteConfigApiFile.render(ctx))
         add(layout.data, ctx.dataPackage, "AppConfigResponse.kt", AppConfigResponseFile.render(ctx))
         add(layout.data, ctx.dataPackage, "RemoteConfigRemoteDataSource.kt", RemoteConfigRemoteDataSourceFile.render(ctx))
@@ -130,6 +138,13 @@ class TemplateIntegrationGenerator : IntegrationGenerator {
             }
         }
 
+        if (ctx.values.isNotEmpty()) {
+            val first = ctx.values.first()
+            manualSteps += "자유 값은 GetRemoteValuesUseCase 로 읽습니다. 화면·ViewModel 에서 주입받아 쓰세요:\n" +
+                "    val values = getRemoteValues()\n" +
+                "    if (values.${first.key} ...) { /* ${first.displayLabel} */ }\n" +
+                "값을 더하거나 이름을 바꾸면 스위치보드에서 다시 만들어야 RemoteValues 가 맞춰집니다"
+        }
         describeHttp(project, http, notes)
         manualSteps += hostStep(project, ctx, facts)
         if (!facts.hasInternetPermission) {

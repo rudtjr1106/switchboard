@@ -1,5 +1,6 @@
 package io.github.rudtjr1106.switchboard.scanner.templates
 
+import io.github.rudtjr1106.switchboard.config.ValueSpec
 import io.github.rudtjr1106.switchboard.scanner.DiFramework
 import io.github.rudtjr1106.switchboard.scanner.HttpStack
 
@@ -43,6 +44,8 @@ internal data class TemplateContext(
     val hostHasDefaultViewModel: Boolean,
     /** KDoc 예시에 쓸 화면 이름 */
     val exampleScreen: String,
+    /** 스키마의 자유 값. 비어 있으면 값 코드를 만들지 않는다 */
+    val values: List<ValueSpec> = emptyList(),
 ) {
     val isHilt: Boolean get() = di == DiFramework.HILT
 

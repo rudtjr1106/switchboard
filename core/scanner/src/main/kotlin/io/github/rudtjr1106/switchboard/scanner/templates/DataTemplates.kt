@@ -102,12 +102,14 @@ internal object AppConfigResponseFile {
         val s = Serialization.of(ctx.http)
         return ctx.source(
             ctx.dataPackage,
-            s.imports + listOf("${ctx.modelPackage}.RemoteNotice", "${ctx.modelPackage}.RemoteNoticeTemplate"),
+            s.imports + listOf("${ctx.modelPackage}.RemoteNotice", "${ctx.modelPackage}.RemoteNoticeTemplate") +
+                if (ctx.values.isEmpty()) emptyList() else listOf("${ctx.modelPackage}.RemoteValues"),
             """
 /** 원격 설정 저장소(${ctx.repoFullName})의 app-config.json 그대로. 스위치보드가 만든 파일이다 */
 ${s.classAnnotation}data class AppConfigResponse(
     ${s.field("version")}val version: Int?${s.default},
-    ${s.field("notices")}val notices: List<RemoteNoticeResponse>?${s.default},
+    ${s.field("notices")}val notices: List<RemoteNoticeResponse>?${s.default},${if (ctx.values.isEmpty()) "" else """
+    ${s.field("values")}val values: RemoteValuesResponse?${s.default},"""}
 ) {
     /**
      * 앱이 아는 스키마 버전일 때만 읽는다
@@ -119,10 +121,27 @@ ${s.classAnnotation}data class AppConfigResponse(
         return notices.orEmpty().mapNotNull { it.toDomain() }
     }
 
+${if (ctx.values.isEmpty()) "" else """    /** 자유 값. 파일에 없거나 모르는 버전이면 스키마의 기본값을 그대로 쓴다 */
+    fun toValues(): RemoteValues {
+        if (version != SUPPORTED_VERSION) return RemoteValues()
+        return values?.toDomain() ?: RemoteValues()
+    }
+"""}
     companion object {
         private const val SUPPORTED_VERSION = 1
     }
-}
+}${if (ctx.values.isEmpty()) "" else """
+
+${s.classAnnotation}data class RemoteValuesResponse(
+${ctx.values.joinToString("\n") { spec ->
+        "    " + s.field(spec.key) + "val " + spec.key + ": " + ValueCode.kotlinType(spec) + "?" + s.default + ","
+    }}
+) {
+    // 값 하나가 빠져도 나머지는 살린다. 빠진 자리에는 스키마 기본값이 들어간다
+    fun toDomain(): RemoteValues = RemoteValues(
+${ctx.values.joinToString("\n") { spec -> "        " + spec.key + " = " + spec.key + " ?: " + ValueCode.defaultLiteral(spec) + "," }}
+    )
+}"""}
 
 ${s.classAnnotation}data class RemoteNoticeResponse(
     ${s.field("screen")}val screen: String?${s.default},
@@ -209,7 +228,8 @@ class RemoteConfigRemoteDataSourceImpl${ctx.injectConstructor}(
 internal object RemoteConfigRepositoryImplFile {
     fun render(ctx: TemplateContext): String = ctx.source(
         ctx.dataPackage,
-        listOf("${ctx.modelPackage}.RemoteNotice", "${ctx.repositoryPackage}.RemoteConfigRepository") + ctx.injectImports,
+        listOf("${ctx.modelPackage}.RemoteNotice", "${ctx.repositoryPackage}.RemoteConfigRepository") + ctx.injectImports +
+            if (ctx.values.isEmpty()) emptyList() else listOf("${ctx.modelPackage}.RemoteValues"),
         """
 /** 원격 설정 저장소(${ctx.repoFullName}) 응답을 도메인 모델로 바꾼다. 스위치보드가 만든 파일이다 */
 class RemoteConfigRepositoryImpl${ctx.injectConstructor}(
@@ -218,7 +238,11 @@ class RemoteConfigRepositoryImpl${ctx.injectConstructor}(
 
     override suspend fun getNotices(): Result<List<RemoteNotice>> {
         return remoteConfigRemoteDataSource.getAppConfig().map { it.toDomain() }
-    }
+    }${if (ctx.values.isEmpty()) "" else """
+
+    override suspend fun getValues(): Result<RemoteValues> {
+        return remoteConfigRemoteDataSource.getAppConfig().map { it.toValues() }
+    }"""}
 }
 """,
     )

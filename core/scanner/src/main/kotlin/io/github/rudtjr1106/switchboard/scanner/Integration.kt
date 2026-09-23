@@ -1,6 +1,7 @@
 package io.github.rudtjr1106.switchboard.scanner
 
 import io.github.rudtjr1106.switchboard.config.ScreenInfo
+import io.github.rudtjr1106.switchboard.config.ValueSpec
 import java.nio.file.Path
 
 data class IntegrationTarget(
@@ -11,6 +12,8 @@ data class IntegrationTarget(
     /** `owner/repo` */
     val repoFullName: String,
     val screens: List<ScreenInfo>,
+    /** 스키마에 정의된 자유 값. 비어 있으면 값 관련 코드를 만들지 않는다 */
+    val values: List<ValueSpec> = emptyList(),
 )
 
 enum class FileAction { CREATE, MODIFY }

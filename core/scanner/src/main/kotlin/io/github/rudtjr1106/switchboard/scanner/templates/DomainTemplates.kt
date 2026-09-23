@@ -70,13 +70,16 @@ enum class RemoteNoticeTemplate {
 internal object RemoteConfigRepositoryFile {
     fun render(ctx: TemplateContext): String = ctx.source(
         ctx.repositoryPackage,
-        listOf("${ctx.modelPackage}.RemoteNotice"),
+        listOf("${ctx.modelPackage}.RemoteNotice") + if (ctx.values.isEmpty()) emptyList() else listOf("${ctx.modelPackage}.RemoteValues"),
         """
 /** 원격 설정 저장소(${ctx.repoFullName})의 화면별 안내. 스위치보드가 만든 파일이다 */
 interface RemoteConfigRepository {
 
     // 원격 설정의 화면별 안내 목록. 받아오지 못하면 실패를 돌려주고 예외는 던지지 않는다
-    suspend fun getNotices(): Result<List<RemoteNotice>>
+    suspend fun getNotices(): Result<List<RemoteNotice>>${if (ctx.values.isEmpty()) "" else """
+
+    // 앱이 읽어가는 자유 값. 받아오지 못하면 실패를 돌려준다 (호출부는 기본값을 쓰면 된다)
+    suspend fun getValues(): Result<RemoteValues>"""}
 }
 """,
     )
