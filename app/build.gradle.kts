@@ -125,7 +125,7 @@ compose.desktop {
             // MSI 표에 들어가므로 한글을 쓰지 않는다 (WiX 3 코드 페이지 1252)
             description = "Remote config editor for Android apps"
             vendor = "rudtjr1106"
-            copyright = "© 2026 rudtjr1106. MIT License."
+            copyright = "© 2026 rudtjr1106. PolyForm Strict License 1.0.0."
             licenseFile.set(rootProject.file("LICENSE"))
 
             // JNA(키체인)·logback(JNDI)·HTTP 가 쓰는 JDK 모듈
